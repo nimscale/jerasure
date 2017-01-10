@@ -1,0 +1,1 @@
+galois.nim(41, 51) Error: undeclared identifier: 'libname'
