@@ -114,30 +114,44 @@ import
 ##                               jerasure_generate_schedule_cache.
 ##
 
-proc jerasure_matrix_to_bitmatrix*(k: cint; m: cint; w: cint; matrix: ptr cint): ptr cint
-proc jerasure_dumb_bitmatrix_to_schedule*(k: cint; m: cint; w: cint;
-    bitmatrix: ptr cint): ptr ptr cint
-proc jerasure_smart_bitmatrix_to_schedule*(k: cint; m: cint; w: cint;
-    bitmatrix: ptr cint): ptr ptr cint
-proc jerasure_generate_schedule_cache*(k: cint; m: cint; w: cint; bitmatrix: ptr cint;
-                                      smart: cint): ptr ptr ptr cint
-proc jerasure_free_schedule*(schedule: ptr ptr cint)
-proc jerasure_free_schedule_cache*(k: cint; m: cint; cache: ptr ptr ptr cint)
+proc jerasure_matrix_to_bitmatrix*(k: cint; m: cint; w: cint; matrix: ptr cint): ptr cint =
+    echo "Jerasure matrix to bitmatric"
+
+proc jerasure_dumb_bitmatrix_to_schedule*(k: cint; m: cint; w: cint; bitmatrix: ptr cint): ptr ptr cint =
+    echo "Jerasure dumb bitmatric to schedule"
+
+proc jerasure_smart_bitmatrix_to_schedule*(k: cint; m: cint; w: cint; bitmatrix: ptr cint): ptr ptr cint =
+    echo "Jerasure smart bitmatric to schedule"
+proc jerasure_generate_schedule_cache*(k: cint; m: cint; w: cint; bitmatrix: ptr cint; smart: cint): ptr ptr ptr cint =
+    echo "Jerasure generate schedule cache"
+
+proc jerasure_free_schedule*(schedule: ptr ptr cint): cint =
+    echo "Jerasure free schedule"
+
+proc jerasure_free_schedule_cache*(k: cint; m: cint; cache: ptr ptr ptr cint): cint =
+    echo "Jerasure free schedule cache"
+
 ##  ------------------------------------------------------------
 ##  Encoding - these are all straightforward.  jerasure_matrix_encode only
 ##    works with w = 8|16|32.
 
-proc jerasure_do_parity*(k: cint; data_ptrs: cstringArray; parity_ptr: cstring;
-                        size: cint)
+proc jerasure_do_parity*(k: cint; data_ptrs: cstringArray; parity_ptr: cstring; size: cint): cint =
+     echo "Jerasure do parity"
+
 proc jerasure_matrix_encode*(k: cint; m: cint; w: cint; matrix: ptr cint;
                             data_ptrs: cstringArray; coding_ptrs: cstringArray;
-                            size: cint)
+                            size: cint): cint =
+     echo "Jerasure matric encode"
+
 proc jerasure_bitmatrix_encode*(k: cint; m: cint; w: cint; bitmatrix: ptr cint;
                                data_ptrs: cstringArray; coding_ptrs: cstringArray;
-                               size: cint; packetsize: cint)
+                               size: cint; packetsize: cint): cint =
+    echo "Jerasure bitmatric encode"
+
 proc jerasure_schedule_encode*(k: cint; m: cint; w: cint; schedule: ptr ptr cint;
                               data_ptrs: cstringArray; coding_ptrs: cstringArray;
-                              size: cint; packetsize: cint)
+                              size: cint; packetsize: cint): cint =
+    echo "Jerasure schedule encode"
 ##  ------------------------------------------------------------
 ##  Decoding. --------------------------------------------------
 ##  These return integers, because the matrix may not be invertible.
@@ -176,109 +190,144 @@ proc jerasure_schedule_encode*(k: cint; m: cint; w: cint; schedule: ptr ptr cint
 proc jerasure_matrix_decode*(k: cint; m: cint; w: cint; matrix: ptr cint;
                             row_k_ones: cint; erasures: ptr cint;
                             data_ptrs: cstringArray; coding_ptrs: cstringArray;
-                            size: cint): cint
+                            size: cint): cint =
+     echo "Jerasure matric decode"
+
 proc jerasure_bitmatrix_decode*(k: cint; m: cint; w: cint; bitmatrix: ptr cint;
                                row_k_ones: cint; erasures: ptr cint;
                                data_ptrs: cstringArray; coding_ptrs: cstringArray;
-                               size: cint; packetsize: cint): cint
+                               size: cint; packetsize: cint): cint =
+     echo "Jerasure bitmatric decode"
+
 proc jerasure_schedule_decode_lazy*(k: cint; m: cint; w: cint; bitmatrix: ptr cint;
                                    erasures: ptr cint; data_ptrs: cstringArray;
                                    coding_ptrs: cstringArray; size: cint;
-                                   packetsize: cint; smart: cint): cint
+                                   packetsize: cint; smart: cint): cint =
+     echo "jerasure schedule decode lazy"
+
 proc jerasure_schedule_decode_cache*(k: cint; m: cint; w: cint;
                                     scache: ptr ptr ptr cint; erasures: ptr cint;
                                     data_ptrs: cstringArray;
                                     coding_ptrs: cstringArray; size: cint;
-                                    packetsize: cint): cint
+                                    packetsize: cint): cint =
+     echo "Jerasure schedule decode cache"
+
 proc jerasure_make_decoding_matrix*(k: cint; m: cint; w: cint; matrix: ptr cint;
                                    erased: ptr cint; decoding_matrix: ptr cint;
-                                   dm_ids: ptr cint): cint
+                                   dm_ids: ptr cint): cint =
+     echo "Jerasure make decoding matrix"
+
 proc jerasure_make_decoding_bitmatrix*(k: cint; m: cint; w: cint; matrix: ptr cint;
                                       erased: ptr cint; decoding_matrix: ptr cint;
-                                      dm_ids: ptr cint): cint
-proc jerasure_erasures_to_erased*(k: cint; m: cint; erasures: ptr cint): ptr cint
-##  ------------------------------------------------------------
-##  These perform dot products and schedules. -------------------
-##
-##    src_ids is a matrix of k id's (0 - k-1 for data devices, k - k+m-1
-##    for coding devices) that identify the source devices.  Dest_id is
-##    the id of the destination device.
-##
-##    jerasure_matrix_dotprod only works when w = 8|16|32.
-##
-##    jerasure_do_scheduled_operations executes the schedule on w*packetsize worth of
-##    bytes from each device.  ptrs is an array of pointers which should have as many
-##    elements as the highest referenced device in the schedule.
-##
-##
+                                      dm_ids: ptr cint): cint =
+     echo "Jerasure make decoding bitmatrix"
+
+proc jerasure_erasures_to_erased*(k: cint; m: cint; erasures: ptr cint): ptr cint =
+      ##  ------------------------------------------------------------
+      ##  These perform dot products and schedules. -------------------
+      ##
+      ##    src_ids is a matrix of k id's (0 - k-1 for data devices, k - k+m-1
+      ##    for coding devices) that identify the source devices.  Dest_id is
+      ##    the id of the destination device.
+      ##
+      ##    jerasure_matrix_dotprod only works when w = 8|16|32.
+      ##
+      ##    jerasure_do_scheduled_operations executes the schedule on w*packetsize worth of
+      ##    bytes from each device.  ptrs is an array of pointers which should have as many
+      ##    elements as the highest referenced device in the schedule.
+      ##
+      ##
+      echo "Jerasure erasures to erased"
 
 proc jerasure_matrix_dotprod*(k: cint; w: cint; matrix_row: ptr cint; src_ids: ptr cint;
                              dest_id: cint; data_ptrs: cstringArray;
-                             coding_ptrs: cstringArray; size: cint)
+                             coding_ptrs: cstringArray; size: cint): cint =
+
+     echo "Jerasure matrix dotprod"
+
 proc jerasure_bitmatrix_dotprod*(k: cint; w: cint; bitmatrix_row: ptr cint;
                                 src_ids: ptr cint; dest_id: cint;
                                 data_ptrs: cstringArray;
                                 coding_ptrs: cstringArray; size: cint;
-                                packetsize: cint)
+                                packetsize: cint): cint =
+     echo "Jerasure bitmatrix dotprod"
+
 proc jerasure_do_scheduled_operations*(ptrs: cstringArray; schedule: ptr ptr cint;
-                                      packetsize: cint)
-##  ------------------------------------------------------------
-##  Matrix Inversion -------------------------------------------
-##
-##    The two matrix inversion functions work on rows*rows matrices of
-##    ints.  If a bitmatrix, then each int will just be zero or one.
-##    Otherwise, they will be elements of gf(2^w).  Obviously, you can
-##    do bit matrices with crs_invert_matrix() and set w = 1, but
-##    crs_invert_bitmatrix will be more efficient.
-##
-##    The two invertible functions return whether a matrix is invertible.
-##    They are more efficient than the inverstion functions.
-##
-##    Mat will be destroyed when the matrix inversion or invertible
-##    testing is done.  Sorry.
-##
-##    Inv must be allocated by the caller.
-##
-##    The two invert_matrix functions return 0 on success, and -1 if the
-##    matrix is uninvertible.
-##
-##    The two invertible function simply return whether the matrix is
-##    invertible.  (0 or 1). Mat will be destroyed.
-##
+                                      packetsize: cint): cint =
+    ##  ------------------------------------------------------------
+    ##  Matrix Inversion -------------------------------------------
+    ##
+    ##    The two matrix inversion functions work on rows*rows matrices of
+    ##    ints.  If a bitmatrix, then each int will just be zero or one.
+    ##    Otherwise, they will be elements of gf(2^w).  Obviously, you can
+    ##    do bit matrices with crs_invert_matrix() and set w = 1, but
+    ##    crs_invert_bitmatrix will be more efficient.
+    ##
+    ##    The two invertible functions return whether a matrix is invertible.
+    ##    They are more efficient than the inverstion functions.
+    ##
+    ##    Mat will be destroyed when the matrix inversion or invertible
+    ##    testing is done.  Sorry.
+    ##
+    ##    Inv must be allocated by the caller.
+    ##
+    ##    The two invert_matrix functions return 0 on success, and -1 if the
+    ##    matrix is uninvertible.
+    ##
+    ##    The two invertible function simply return whether the matrix is
+    ##    invertible.  (0 or 1). Mat will be destroyed.
+    ##
+    echo "jerasure_do_scheduled_operations"
 
-proc jerasure_invert_matrix*(mat: ptr cint; inv: ptr cint; rows: cint; w: cint): cint
-proc jerasure_invert_bitmatrix*(mat: ptr cint; inv: ptr cint; rows: cint): cint
-proc jerasure_invertible_matrix*(mat: ptr cint; rows: cint; w: cint): cint
-proc jerasure_invertible_bitmatrix*(mat: ptr cint; rows: cint): cint
-##  ------------------------------------------------------------
-##  Basic matrix operations -------------------------------------
-##
-##    Each of the print_matrix routines require a w.  In jerasure_print_matrix,
-##    this is to calculate the field width.  In jerasure_print_bitmatrix, it is
-##    to put spaces between the bits.
-##
-##    jerasure_matrix_multiply is a simple matrix multiplier in GF(2^w).  It returns a r1*c2
-##    matrix, which is the product of the two input matrices.  It allocates
-##    the product.  Obviously, c1 should equal r2.  However, this is not
-##    validated by the procedure.
-##
+proc jerasure_invert_matrix*(mat: ptr cint; inv: ptr cint; rows: cint; w: cint): cint =
+    echo "Jerasaure invert matrix"
 
-proc jerasure_print_matrix*(matrix: ptr cint; rows: cint; cols: cint; w: cint)
-proc jerasure_print_bitmatrix*(matrix: ptr cint; rows: cint; cols: cint; w: cint)
+proc jerasure_invert_bitmatrix*(mat: ptr cint; inv: ptr cint; rows: cint): cint =
+    echo "Jerasure invert bitmatrix"
+
+proc jerasure_invertible_matrix*(mat: ptr cint; rows: cint; w: cint): cint =
+    echo "Jerasure_invertible matrix"
+
+proc jerasure_invertible_bitmatrix*(mat: ptr cint; rows: cint): cint =
+    ##  ------------------------------------------------------------
+    ##  Basic matrix operations -------------------------------------
+    ##
+    ##    Each of the print_matrix routines require a w.  In jerasure_print_matrix,
+    ##    this is to calculate the field width.  In jerasure_print_bitmatrix, it is
+    ##    to put spaces between the bits.
+    ##
+    ##    jerasure_matrix_multiply is a simple matrix multiplier in GF(2^w).  It returns a r1*c2
+    ##    matrix, which is the product of the two input matrices.  It allocates
+    ##    the product.  Obviously, c1 should equal r2.  However, this is not
+    ##    validated by the procedure.
+    ##
+    echo "Jerasure invertible bitmatrix"
+
+proc jerasure_print_matrix*(matrix: ptr cint; rows: cint; cols: cint; w: cint): cint =
+     echo "Jerasure print matrix"
+
+proc jerasure_print_bitmatrix*(matrix: ptr cint; rows: cint; cols: cint; w: cint): cint =
+     echo "Jerasure print matrix"
+
 proc jerasure_matrix_multiply*(m1: ptr cint; m2: ptr cint; r1: cint; c1: cint; r2: cint;
-                              c2: cint; w: cint): ptr cint
-##  ------------------------------------------------------------
-##  Stats ------------------------------------------------------
-##
-##   jerasure_get_stats fills in a vector of three doubles:
-##
-##       fill_in[0] is the number of bytes that have been XOR'd
-##       fill_in[1] is the number of bytes that have been copied
-##       fill_in[2] is the number of bytes that have been multiplied
-##                  by a constant in GF(2^w)
-##
-##   When jerasure_get_stats() is called, it resets its values.
-##
+                              c2: cint; w: cint): ptr cint =
+    ##  ------------------------------------------------------------
+    ##  Stats ------------------------------------------------------
+    ##
+    ##   jerasure_get_stats fills in a vector of three doubles:
+    ##
+    ##       fill_in[0] is the number of bytes that have been XOR'd
+    ##       fill_in[1] is the number of bytes that have been copied
+    ##       fill_in[2] is the number of bytes that have been multiplied
+    ##                  by a constant in GF(2^w)
+    ##
+    ##   When jerasure_get_stats() is called, it resets its values.
+    ##
+    echo "Jerasures matrix multilply"
 
-proc jerasure_get_stats*(fill_in: ptr cdouble)
-proc jerasure_autoconf_test*(): cint
+proc jerasure_get_stats*(fill_in: ptr cdouble): cdouble =
+    echo "Jerasures get stats"
+
+proc jerasure_autoconf_test*(): cint =
+    echo "Configuragions"
+
