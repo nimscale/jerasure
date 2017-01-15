@@ -1,28 +1,28 @@
 ##  *
 ##  Copyright (c) 2013, James S. Plank and Kevin Greenan
 ##  All rights reserved.
-## 
+##
 ##  Jerasure - A C/C++ Library for a Variety of Reed-Solomon and RAID-6 Erasure
 ##  Coding Techniques
-## 
+##
 ##  Revision 2.0: Galois Field backend now links to GF-Complete
-## 
+##
 ##  Redistribution and use in source and binary forms, with or without
 ##  modification, are permitted provided that the following conditions
 ##  are met:
-## 
+##
 ##   - Redistributions of source code must retain the above copyright
 ##     notice, this list of conditions and the following disclaimer.
-## 
+##
 ##   - Redistributions in binary form must reproduce the above copyright
 ##     notice, this list of conditions and the following disclaimer in
 ##     the documentation and/or other materials provided with the
 ##     distribution.
-## 
+##
 ##   - Neither the name of the University of Tennessee nor the names of its
 ##     contributors may be used to endorse or promote products derived
 ##     from this software without specific prior written permission.
-## 
+##
 ##  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ##  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 ##  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -35,11 +35,17 @@
 ##  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
-## 
+##
 
-proc liberation_coding_bitmatrix*(k: cint; w: cint): ptr cint {.cdecl,
-    importc: "liberation_coding_bitmatrix", dynlib: libname.}
-proc liber8tion_coding_bitmatrix*(k: cint): ptr cint {.cdecl,
-    importc: "liber8tion_coding_bitmatrix", dynlib: libname.}
-proc blaum_roth_coding_bitmatrix*(k: cint; w: cint): ptr cint {.cdecl,
-    importc: "blaum_roth_coding_bitmatrix", dynlib: libname.}
+proc liberation_coding_bitmatrix*(k: cint; w: cint): ptr cint =
+    #{.cdecl,importc: "liberation_coding_bitmatrix", dynlib: libname.}
+     echo "Liberation coding bitmatrix"
+
+proc liber8tion_coding_bitmatrix*(k: cint): ptr cint =
+    #{.cdecl, importc: "liber8tion_coding_bitmatrix", dynlib: libname.}
+    echo "Liber8tion codding bitmatrix"
+
+proc blaum_roth_coding_bitmatrix*(k: cint; w: cint): ptr cint =
+    #{.cdecl,importc: "blaum_roth_coding_bitmatrix", dynlib: libname.}
+    echo "Blaum roth coding bitmatrix"
+    
