@@ -39,6 +39,11 @@
 
 
 
+const
+  MAX_GF_INSTANCES* = 64
+
+var gfp_array* : array[MAX_GF_INSTANCES, ptr gf_t]
+
 type
   gf_val_32_t* = uint32
   gf_val_64_t* = uint64
@@ -90,8 +95,15 @@ proc galois_uninit_field*(w: cint): cint =
 proc galois_change_technique*(gf: ptr gf_t; w: cint): cint =
     echo "Galious change technique"
 
-proc galois_single_multiply*(a: cint; b: cint; w: cint): cint =
-    echo "Galoius singl multiply"
+proc galois_single_multiply*(x: cint; y: cint; w: cint): cint =
+    if x == 0 or y == 0: return 0
+    if gfp_array[w] == nil:
+      galois_init(w)
+    if w <= 32:
+      return gfp_array[w].multiply.w32(gfp_array[w], x, y)
+    else:
+      fprintf(stderr, "ERROR -- Galois field not implemented for w=%d\x0A", w)
+      return 0
 
 proc galois_single_divide*(a: cint; b: cint; w: cint): cint =
     echo "Galious single divide"

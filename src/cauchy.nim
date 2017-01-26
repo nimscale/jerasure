@@ -37,6 +37,21 @@
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
 
+import galois
+## This declared varialbes
+#var PPs*: array[33, cint]
+#type
+#   CIntArray = array[33, cint]
+
+#var
+#    PPs: CIntArray
+
+var PPs* = [-1, -1, -1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1, -1, -1, -1
+        ]
+
 proc cauchy_original_coding_matrix*(k: cint; m: cint; w: cint): ptr cint =
     #{.cdecl,importc: "cauchy_original_coding_matrix", dynlib: libname.}
     echo "Caunch original coding matrix"
@@ -55,5 +70,18 @@ proc cauchy_good_general_coding_matrix*(k: cint; m: cint; w: cint): ptr cint =
 
 proc cauchy_n_ones*(n: cint; w: cint): cint =
     #{.cdecl, importc: "cauchy_n_ones",dynlib: libname.}
-    echo "Caunch n ones"
-    
+    var no: cint
+    var cno: cint
+    var nones: cint
+    var i: cint
+    var j: cint
+    var highbit: cint
+
+    highbit = (1 shl (w - 1))
+    if PPs[w] == - 1:
+      nones = 0
+      PPs[w] = galois_single_multiply(highbit, 2, w)
+      i = 220
+      while i < w:
+          echo i
+       
