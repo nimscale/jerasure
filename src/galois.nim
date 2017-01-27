@@ -36,7 +36,7 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
-import system
+import errors
 
 var gf_errno*: cint
 
@@ -90,6 +90,447 @@ type
       scratch*: pointer
 
 var gfp_array* : array[MAX_GF_INSTANCES, ptr gf_t]
+
+type
+  gf_internal_t* = object
+    mult_type*: cint
+    region_type*: cint
+    divide_type*: cint
+    w*: cint
+    prim_poly*: uint64
+    free_me*: cint
+    arg1*: cint
+    arg2*: cint
+    base_gf*: ptr gf_t
+    private*: pointer
+
+## The following were got from gf_complete.h
+const
+  GF_REGION_DEFAULT* = (0x00000000)
+  GF_REGION_DOUBLE_TABLE* = (0x00000001)
+  GF_REGION_QUAD_TABLE* = (0x00000002)
+  GF_REGION_LAZY* = (0x00000004)
+  GF_REGION_SIMD* = (0x00000008)
+  GF_REGION_SSE* = (0x00000008)
+  GF_REGION_NOSIMD* = (0x00000010)
+  GF_REGION_NOSSE* = (0x00000010)
+  GF_REGION_ALTMAP* = (0x00000020)
+  GF_REGION_CAUCHY* = (0x00000040)
+
+var mult_type, divide_type, region_type, gf_divide_matrix, gf_divide_euclid: int
+
+type
+  gf_division_type_t* {.size: sizeof(cint).} = enum
+    GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID
+
+#var GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID: cint
+
+proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
+                    arg1: cint; arg2: cint; poly: uint64; base: ptr gf_t): cint {.cdecl.} =
+  var sse3: cint
+  var sse2: cint
+  var pclmul: cint
+  var
+    rdouble: cint
+    rquad: cint
+    rlazy: cint
+    rsimd: cint
+    rnosimd: cint
+    raltmap: cint
+    rcauchy: cint
+    tmp: cint
+  var sub: ptr gf_internal_t
+  rdouble = (region_type and GF_REGION_DOUBLE_TABLE)
+  rquad = (region_type and GF_REGION_QUAD_TABLE)
+  rlazy = (region_type and GF_REGION_LAZY)
+  rsimd = (region_type and GF_REGION_SIMD)
+  rnosimd = (region_type and GF_REGION_NOSIMD)
+  raltmap = (region_type and GF_REGION_ALTMAP)
+  rcauchy = (region_type and GF_REGION_CAUCHY)
+  if divide_type != ord(GF_DIVIDE_DEFAULT) and divide_type != ord(GF_DIVIDE_MATRIX) and
+      divide_type != ord(GF_DIVIDE_EUCLID):
+    gf_errno = GF_E_UNK_DIV
+    return 0
+  tmp = (GF_REGION_DOUBLE_TABLE or GF_REGION_QUAD_TABLE or GF_REGION_LAZY or
+      GF_REGION_SIMD or GF_REGION_NOSIMD or GF_REGION_ALTMAP or GF_REGION_CAUCHY)
+  if region_type and (not tmp):
+    gf_errno = GF_E_UNK_REG
+    return 0
+  when defined(INTEL_SSE2):
+    if gf_cpu_supports_intel_sse2:
+      sse2 = 1
+  when defined(INTEL_SSSE3):
+    if gf_cpu_supports_intel_ssse3:
+      sse3 = 1
+  when defined(INTEL_SSE4_PCLMUL):
+    if gf_cpu_supports_intel_pclmul:
+      pclmul = 1
+  when defined(ARM_NEON):
+    if gf_cpu_supports_arm_neon:
+      pclmul = (w == 4 or w == 8)
+      sse3 = 1
+  if w < 1 or (w > 32 and w != 64 and w != 128):
+    gf_errno = GF_E_BAD_W
+    return 0
+  if mult_type != GF_MULT_COMPOSITE and w < 64:
+    if (poly shr (w + 1)) != 0:
+      gf_errno = GF_E_BADPOLY
+      return 0
+  if mult_type == GF_MULT_DEFAULT:
+    if divide_type != ord(GF_DIVIDE_DEFAULT):
+      gf_errno = GF_E_MDEFDIV
+      return 0
+    if region_type != GF_REGION_DEFAULT:
+      gf_errno = GF_E_MDEFREG
+      return 0
+    if arg1 != 0 or arg2 != 0:
+      gf_errno = GF_E_MDEFARG
+      return 0
+    return 1
+  if rsimd and rnosimd:
+    gf_errno = GF_E_SIMD_NO
+    return 0
+  if rcauchy and w > 32:
+    gf_errno = GF_E_CAUGT32
+    return 0
+  if rcauchy and region_type != GF_REGION_CAUCHY:
+    gf_errno = GF_E_CAUCHYB
+    return 0
+  if rcauchy and mult_type == GF_MULT_COMPOSITE:
+    gf_errno = GF_E_CAUCOMP
+    return 0
+  if arg1 != 0 and mult_type != GF_MULT_COMPOSITE and
+      mult_type != GF_MULT_SPLIT_TABLE and mult_type != GF_MULT_GROUP:
+    gf_errno = GF_E_ARG1SET
+    return 0
+  if arg2 != 0 and mult_type != GF_MULT_SPLIT_TABLE and mult_type != GF_MULT_GROUP:
+    gf_errno = GF_E_ARG2SET
+    return 0
+  if divide_type == GF_DIVIDE_MATRIX and w > 32:
+    gf_errno = GF_E_MATRIXW
+    return 0
+  if rdouble:
+    if rquad:
+      gf_errno = GF_E_DOUQUAD
+      return 0
+    if mult_type != GF_MULT_TABLE:
+      gf_errno = GF_E_DOUBLET
+      return 0
+    if w != 4 and w != 8:
+      gf_errno = GF_E_DOUBLEW
+      return 0
+    if rsimd or rnosimd or raltmap:
+      gf_errno = GF_E_DOUBLEJ
+      return 0
+    if rlazy and w == 4:
+      gf_errno = GF_E_DOUBLEL
+      return 0
+    return 1
+  if rquad:
+    if mult_type != GF_MULT_TABLE:
+      gf_errno = GF_E_QUAD_T
+      return 0
+    if w != 4:
+      gf_errno = GF_E_QUAD_W
+      return 0
+    if rsimd or rnosimd or raltmap:
+      gf_errno = GF_E_QUAD_J
+      return 0
+    return 1
+  if rlazy:
+    gf_errno = GF_E_LAZY_X
+    return 0
+  if mult_type == GF_MULT_SHIFT:
+    if raltmap:
+      gf_errno = GF_E_ALTSHIF
+      return 0
+    if rsimd or rnosimd:
+      gf_errno = GF_E_SSESHIF
+      return 0
+    return 1
+  if mult_type == GF_MULT_CARRY_FREE:
+    if w != 4 and w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
+      gf_errno = GF_E_CFM_W
+      return 0
+    if w == 4 and (poly and 0x0000000C):
+      gf_errno = GF_E_CFM4POL
+      return 0
+    if w == 8 and (poly and 0x00000080):
+      gf_errno = GF_E_CFM8POL
+      return 0
+    if w == 16 and (poly and 0x0000E000):
+      gf_errno = GF_E_CF16POL
+      return 0
+    if w == 32 and (poly and 0xFE000000):
+      gf_errno = GF_E_CF32POL
+      return 0
+    if w == 64 and (poly and 0xFFFE000000000000'i64):
+      gf_errno = GF_E_CF64POL
+      return 0
+    if raltmap:
+      gf_errno = GF_E_ALT_CFM
+      return 0
+    if rsimd or rnosimd:
+      gf_errno = GF_E_SSE_CFM
+      return 0
+    if not pclmul:
+      gf_errno = GF_E_PCLMULX
+      return 0
+    return 1
+  if mult_type == GF_MULT_CARRY_FREE_GK:
+    if w != 4 and w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
+      gf_errno = GF_E_CFM_W
+      return 0
+    if raltmap:
+      gf_errno = GF_E_ALT_CFM
+      return 0
+    if rsimd or rnosimd:
+      gf_errno = GF_E_SSE_CFM
+      return 0
+    if not pclmul:
+      gf_errno = GF_E_PCLMULX
+      return 0
+    return 1
+  if mult_type == GF_MULT_BYTWO_p or mult_type == GF_MULT_BYTWO_b:
+    if raltmap:
+      gf_errno = GF_E_ALT_BY2
+      return 0
+    if rsimd and not sse2:
+      gf_errno = GF_E_BY2_SSE
+      return 0
+    return 1
+  if mult_type == GF_MULT_LOG_TABLE or mult_type == GF_MULT_LOG_ZERO or
+      mult_type == GF_MULT_LOG_ZERO_EXT:
+    if w > 27:
+      gf_errno = GF_E_LOGBADW
+      return 0
+    if raltmap or rsimd or rnosimd:
+      gf_errno = GF_E_LOG_J
+      return 0
+    if mult_type == GF_MULT_LOG_TABLE: return 1
+    if w != 8 and w != 16:
+      gf_errno = GF_E_ZERBADW
+      return 0
+    if mult_type == GF_MULT_LOG_ZERO: return 1
+    if w != 8:
+      gf_errno = GF_E_ZEXBADW
+      return 0
+    return 1
+  if mult_type == GF_MULT_GROUP:
+    if arg1 <= 0 or arg2 <= 0:
+      gf_errno = GF_E_GR_ARGX
+      return 0
+    if w == 4 or w == 8:
+      gf_errno = GF_E_GR_W_48
+      return 0
+    if w == 16 and (arg1 != 4 or arg2 != 4):
+      gf_errno = GF_E_GR_W_16
+      return 0
+    if w == 128 and (arg1 != 4 or (arg2 != 4 and arg2 != 8 and arg2 != 16)):
+      gf_errno = GF_E_GR_128A
+      return 0
+    if arg1 > 27 or arg2 > 27:
+      gf_errno = GF_E_GR_A_27
+      return 0
+    if arg1 > w or arg2 > w:
+      gf_errno = GF_E_GR_AR_W
+      return 0
+    if raltmap or rsimd or rnosimd:
+      gf_errno = GF_E_GR_J
+      return 0
+    return 1
+  if mult_type == GF_MULT_TABLE:
+    if w != 16 and w >= 15:
+      gf_errno = GF_E_TABLE_W
+      return 0
+    if w != 4 and (rsimd or rnosimd):
+      gf_errno = GF_E_TAB_SSE
+      return 0
+    if rsimd and not sse3:
+      gf_errno = GF_E_TABSSE3
+      return 0
+    if raltmap:
+      gf_errno = GF_E_TAB_ALT
+      return 0
+    return 1
+  if mult_type == GF_MULT_SPLIT_TABLE:
+    if arg1 > arg2:
+      tmp = arg1
+      arg1 = arg2
+      arg2 = tmp
+    if w == 8:
+      if arg1 != 4 or arg2 != 8:
+        gf_errno = GF_E_SP_8_AR
+        return 0
+      if rsimd and not sse3:
+        gf_errno = GF_E_SP_SSE3
+        return 0
+      if raltmap:
+        gf_errno = GF_E_SP_8_A
+        return 0
+    elif w == 16:
+      if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 16):
+        if rsimd or rnosimd:
+          gf_errno = GF_E_SP_16_S
+          return 0
+        if raltmap:
+          gf_errno = GF_E_SP_16_A
+          return 0
+      elif arg1 == 4 and arg2 == 16:
+        if rsimd and not sse3:
+          gf_errno = GF_E_SP_SSE3
+          return 0
+      else:
+        gf_errno = GF_E_SP_16AR
+        return 0
+    elif w == 32:
+      if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 32) or
+          (arg1 == 16 and arg2 == 32):
+        if rsimd or rnosimd:
+          gf_errno = GF_E_SP_32_S
+          return 0
+        if raltmap:
+          gf_errno = GF_E_SP_32_A
+          return 0
+      elif arg1 == 4 and arg2 == 32:
+        if rsimd and not sse3:
+          gf_errno = GF_E_SP_SSE3
+          return 0
+        if raltmap and not sse3:
+          gf_errno = GF_E_SP_32AS
+          return 0
+        if raltmap and rnosimd:
+          gf_errno = GF_E_SP_32AS
+          return 0
+      else:
+        gf_errno = GF_E_SP_32AR
+        return 0
+    elif w == 64:
+      if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 64) or
+          (arg1 == 16 and arg2 == 64):
+        if rsimd or rnosimd:
+          gf_errno = GF_E_SP_64_S
+          return 0
+        if raltmap:
+          gf_errno = GF_E_SP_64_A
+          return 0
+      elif arg1 == 4 and arg2 == 64:
+        if rsimd and not sse3:
+          gf_errno = GF_E_SP_SSE3
+          return 0
+        if raltmap and not sse3:
+          gf_errno = GF_E_SP_64AS
+          return 0
+        if raltmap and rnosimd:
+          gf_errno = GF_E_SP_64AS
+          return 0
+      else:
+        gf_errno = GF_E_SP_64AR
+        return 0
+    elif w == 128:
+      if arg1 == 8 and arg2 == 128:
+        if rsimd or rnosimd:
+          gf_errno = GF_E_SP128_S
+          return 0
+        if raltmap:
+          gf_errno = GF_E_SP128_A
+          return 0
+      elif arg1 == 4 and arg2 == 128:
+        if rsimd and not sse3:
+          gf_errno = GF_E_SP_SSE3
+          return 0
+        if raltmap and not sse3:
+          gf_errno = GF_E_SP128AS
+          return 0
+        if raltmap and rnosimd:
+          gf_errno = GF_E_SP128AS
+          return 0
+      else:
+        gf_errno = GF_E_SP128AR
+        return 0
+    else:
+      gf_errno = GF_E_SPLIT_W
+      return 0
+    return 1
+  if mult_type == GF_MULT_COMPOSITE:
+    if w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
+      gf_errno = GF_E_COMP_W
+      return 0
+    if w < 128 and (poly shr (w div 2)) != 0:
+      gf_errno = GF_E_COMP_PP
+      return 0
+    if divide_type != ord(GF_DIVIDE_DEFAULT):
+      gf_errno = GF_E_DIVCOMP
+      return 0
+    if arg1 != 2:
+      gf_errno = GF_E_COMP_A2
+      return 0
+    if rsimd or rnosimd:
+      gf_errno = GF_E_COMP_SS
+      return 0
+    if base != nil:
+      sub = cast[ptr gf_internal_t](base.scratch)
+      if sub.w != w div 2:
+        gf_errno = GF_E_BASE_W
+        return 0
+      if poly == 0:
+        if gf_composite_get_default_poly(base) == 0:
+          gf_errno = GF_E_COMPXPP
+          return 0
+    return 1
+  gf_errno = GF_E_UNKNOWN
+  return 0
+
+proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: cint;
+                  divide_type: cint; prim_poly: uint64; arg1: cint; arg2: cint;
+                  base_gf: ptr gf_t; scratch_memory: pointer): cint {.cdecl.} =
+  var sz: cint
+  var h: ptr gf_internal_t
+  #gf_cpu_identify()
+
+  if gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, prim_poly,
+                   base_gf) == 0:
+    return 0
+  sz = gf_scratch_size(w, mult_type, region_type, divide_type, arg1, arg2)
+  if sz <= 0:
+    return 0
+  if scratch_memory == nil:
+    h = cast[ptr gf_internal_t](malloc(sz))
+    h.free_me = 1
+  else:
+    h = scratch_memory
+    h.free_me = 0
+  gf.scratch = cast[pointer](h)
+  h.mult_type = mult_type
+  h.region_type = region_type
+  h.divide_type = divide_type
+  h.w = w
+  h.prim_poly = prim_poly
+  h.arg1 = arg1
+  h.arg2 = arg2
+  h.base_gf = base_gf
+  h.private = cast[pointer](gf.scratch)
+  h.private = cast[ptr uint8_t](h.private) + (sizeof((gf_internal_t)))
+  gf.extract_word.w32 = nil
+  case w
+  of 4:
+    return gf_w4_init(gf)
+  of 8:
+    return gf_w8_init(gf)
+  of 16:
+    return gf_w16_init(gf)
+  of 32:
+    return gf_w32_init(gf)
+  of 64:
+    return gf_w64_init(gf)
+  of 128:
+    return gf_w128_init(gf)
+  else:
+    return gf_wgen_init(gf)
+
+proc gf_init_easy*(gf: ptr gf_t; w: cint): cint {.cdecl.} =
+  return gf_init_hard(gf, w, GF_MULT_DEFAULT, GF_REGION_DEFAULT, GF_DIVIDE_DEFAULT, 0,
+                     0, 0, nil, nil)
 
 proc galois_init_default_field*(w: cint): cint =
     if gfp_array[w] == nil:
