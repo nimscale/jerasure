@@ -36,50 +36,16 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
+import system
 
 var gf_errno*: cint
 
-type
-  GFP* = ptr object ## gf
-
-type
-  ##GFP* = ptr gf
-  gf_func_a_b* = object {.union.}
-    w32*: proc (gf: GFP; a: gf_val_32_t; b: gf_val_32_t): gf_val_32_t
-    w64*: proc (gf: GFP; a: gf_val_64_t; b: gf_val_64_t): gf_val_64_t
-    w128*: proc (gf: GFP; a: gf_val_128_t; b: gf_val_128_t; c: gf_val_128_t)
-
-  gf_func_a* = object {.union.}
-    w32*: proc (gf: GFP; a: gf_val_32_t): gf_val_32_t
-    w64*: proc (gf: GFP; a: gf_val_64_t): gf_val_64_t
-    w128*: proc (gf: GFP; a: gf_val_128_t; b: gf_val_128_t)
-
-  gf_region* = object {.union.}
-    w32*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_32_t; bytes: cint;
-              add: cint)
-    w64*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_64_t; bytes: cint;
-              add: cint)
-    w128*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_128_t; bytes: cint;
-               add: cint)
-
-  gf_extract* = object {.union.}
-    w32*: proc (gf: GFP; start: pointer; bytes: cint; index: cint): gf_val_32_t
-    w64*: proc (gf: GFP; start: pointer; bytes: cint; index: cint): gf_val_64_t
-    w128*: proc (gf: GFP; start: pointer; bytes: cint; index: cint; rv: gf_val_128_t)
-
-  gf_t* = object
-    multiply*: gf_func_a_b
-    divide*: gf_func_a_b
-    inverse*: gf_func_a
-    multiply_region*: gf_region
-    extract_word*: gf_extract
-    scratch*: pointer
-
-
 const
   MAX_GF_INSTANCES* = 64
-
-var gfp_array* : array[MAX_GF_INSTANCES, ptr gf_t]
+const
+  ENOMEM* = 12
+const
+    EINVAL* = 22
 
 type
   gf_val_32_t* = uint32
@@ -123,8 +89,32 @@ type
       extract_word*: gf_extract
       scratch*: pointer
 
+var gfp_array* : array[MAX_GF_INSTANCES, ptr gf_t]
+
 proc galois_init_default_field*(w: cint): cint =
-    echo "Galois init default field"
+    if gfp_array[w] == nil:
+
+      gfp_array[w] = cast[ptr gf_t](sizeof((gf_t)))
+    if gfp_array[w] == nil:
+      return ENOMEM
+
+    if not gf_init_easy(gfp_array[w], w):
+      return EINVAL
+
+    return 0
+
+proc galois_init*(w: cint) =
+  if w <= 0 or w > 32:
+    write(stderr, "ERROR -- cannot init default Galois field for w=%d\x0A", w)
+    assert(false, "There was a problem!")
+  case galois_init_default_field(w)
+  of ENOMEM:
+    write(stderr, "ERROR -- cannot allocate memory for Galois field w=%d\x0A", w)
+    assert(0)
+  of EINVAL:
+    write(stderr, "ERROR -- cannot init default Galois field for w=%d\x0A", w)
+    assert(0)
+
 
 proc galois_uninit_field*(w: cint): cint =
     echo "Galois uninit field"
@@ -136,6 +126,7 @@ proc galois_single_multiply*(x: cint; y: cint; w: cint): cint =
     if x == 0 or y == 0: return 0
     if gfp_array[w] == nil:
       galois_init(w)
+
     if w <= 32:
       return gfp_array[w].multiply.w32(gfp_array[w], x, y)
     else:
