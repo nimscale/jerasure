@@ -36,7 +36,7 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
-import errors
+import errors, typedefinitions
 
 var gf_errno*: cint
 
@@ -140,6 +140,11 @@ proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: c
     rcauchy: cint
     tmp: cint
   var sub: ptr gf_internal_t
+
+  ## Call the function to assign values to
+  ## our defined error varialbes
+  gf_error_assignment()
+
   rdouble = (region_type and GF_REGION_DOUBLE_TABLE)
   rquad = (region_type and GF_REGION_QUAD_TABLE)
   rlazy = (region_type and GF_REGION_LAZY)
@@ -149,12 +154,14 @@ proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: c
   rcauchy = (region_type and GF_REGION_CAUCHY)
   if divide_type != ord(GF_DIVIDE_DEFAULT) and divide_type != ord(GF_DIVIDE_MATRIX) and
       divide_type != ord(GF_DIVIDE_EUCLID):
-    gf_errno = GF_E_UNK_DIV
+    gf_errno = ord(GF_E_UNK_DIV)
     return 0
+
   tmp = (GF_REGION_DOUBLE_TABLE or GF_REGION_QUAD_TABLE or GF_REGION_LAZY or
       GF_REGION_SIMD or GF_REGION_NOSIMD or GF_REGION_ALTMAP or GF_REGION_CAUCHY)
-  if region_type and (not tmp):
-    gf_errno = GF_E_UNK_REG
+
+  if bool(region_type and (not tmp)):
+    gf_errno = ord(GF_E_UNK_REG)
     return 0
   when defined(INTEL_SSE2):
     if gf_cpu_supports_intel_sse2:
@@ -170,41 +177,41 @@ proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: c
       pclmul = (w == 4 or w == 8)
       sse3 = 1
   if w < 1 or (w > 32 and w != 64 and w != 128):
-    gf_errno = GF_E_BAD_W
+    gf_errno = ord(GF_E_BAD_W)
     return 0
-  if mult_type != GF_MULT_COMPOSITE and w < 64:
-    if (poly shr (w + 1)) != 0:
-      gf_errno = GF_E_BADPOLY
+  if mult_type != ord(GF_MULT_COMPOSITE) and w < 64:
+    if (poly shr uint64((w + 1)) ) != 0:
+      gf_errno = ord(GF_E_BADPOLY)
       return 0
-  if mult_type == GF_MULT_DEFAULT:
+  if mult_type == ord(GF_MULT_DEFAULT):
     if divide_type != ord(GF_DIVIDE_DEFAULT):
-      gf_errno = GF_E_MDEFDIV
+      gf_errno = ord(GF_E_MDEFDIV)
       return 0
     if region_type != GF_REGION_DEFAULT:
-      gf_errno = GF_E_MDEFREG
+      gf_errno = int32(GF_E_MDEFREG)
       return 0
     if arg1 != 0 or arg2 != 0:
-      gf_errno = GF_E_MDEFARG
+      gf_errno = int32(GF_E_MDEFARG)
       return 0
     return 1
-  if rsimd and rnosimd:
-    gf_errno = GF_E_SIMD_NO
+  if bool(rsimd and rnosimd):
+    gf_errno = int32(GF_E_SIMD_NO)
     return 0
-  if rcauchy and w > 32:
-    gf_errno = GF_E_CAUGT32
+  if rcauchy + w > 32:
+    gf_errno = int32(GF_E_CAUGT32)
     return 0
-  if rcauchy and region_type != GF_REGION_CAUCHY:
-    gf_errno = GF_E_CAUCHYB
+  if rcauchy + region_type != GF_REGION_CAUCHY:
+    gf_errno = int32(GF_E_CAUCHYB)
     return 0
-  if rcauchy and mult_type == GF_MULT_COMPOSITE:
-    gf_errno = GF_E_CAUCOMP
+  if rcauchy + mult_type == int32(GF_MULT_COMPOSITE):
+    gf_errno = int32(GF_E_CAUCOMP)
     return 0
-  if arg1 != 0 and mult_type != GF_MULT_COMPOSITE and
-      mult_type != GF_MULT_SPLIT_TABLE and mult_type != GF_MULT_GROUP:
-    gf_errno = GF_E_ARG1SET
+  if arg1 != 0 and mult_type != cint(GF_MULT_COMPOSITE) and
+      mult_type != cint(GF_MULT_SPLIT_TABLE) and mult_type != cint(GF_MULT_GROUP):
+    gf_errno = int32(GF_E_ARG1SET)
     return 0
-  if arg2 != 0 and mult_type != GF_MULT_SPLIT_TABLE and mult_type != GF_MULT_GROUP:
-    gf_errno = GF_E_ARG2SET
+  if arg2 != 0 and mult_type != cint(GF_MULT_SPLIT_TABLE) and mult_type != cint(GF_MULT_GROUP):
+    gf_errno = int32(GF_E_ARG2SET)
     return 0
   if divide_type == GF_DIVIDE_MATRIX and w > 32:
     gf_errno = GF_E_MATRIXW
