@@ -1,7 +1,7 @@
 ## This files contains type definition that are needed
 ## by some procs and other operations.
 ## This is manaully got from other header files
-import system
+#import system
 
 type
   gf_mult_type_t* {.size: sizeof(cint).} = enum

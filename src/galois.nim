@@ -126,7 +126,7 @@ type
 #var GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID: cint
 
 proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
-                    arg1: cint; arg2: cint; poly: uint64; base: ptr gf_t): cint {.cdecl.} =
+                    arg1: var cint; arg2: var cint; poly: uint64; base: ptr gf_t): cint {.cdecl.} =
   var sse3: cint
   var sse2: cint
   var pclmul: cint
@@ -213,279 +213,285 @@ proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: c
   if arg2 != 0 and mult_type != cint(GF_MULT_SPLIT_TABLE) and mult_type != cint(GF_MULT_GROUP):
     gf_errno = int32(GF_E_ARG2SET)
     return 0
-  if divide_type == GF_DIVIDE_MATRIX and w > 32:
-    gf_errno = GF_E_MATRIXW
+  if divide_type == cint(GF_DIVIDE_MATRIX) and w > 32:
+    gf_errno = cint(GF_E_MATRIXW)
     return 0
-  if rdouble:
-    if rquad:
-      gf_errno = GF_E_DOUQUAD
+  if bool(rdouble):
+    if bool(rquad):
+      gf_errno = cint(GF_E_DOUQUAD)
       return 0
-    if mult_type != GF_MULT_TABLE:
-      gf_errno = GF_E_DOUBLET
+    if mult_type != cint(GF_MULT_TABLE):
+      gf_errno = cint(GF_E_DOUBLET)
       return 0
     if w != 4 and w != 8:
-      gf_errno = GF_E_DOUBLEW
+      gf_errno = cint(GF_E_DOUBLEW)
       return 0
-    if rsimd or rnosimd or raltmap:
-      gf_errno = GF_E_DOUBLEJ
+    if bool(rsimd or rnosimd or raltmap):
+      gf_errno = cint(GF_E_DOUBLEJ)
       return 0
-    if rlazy and w == 4:
-      gf_errno = GF_E_DOUBLEL
+    if int32(rlazy and w) == 4:
+      gf_errno = cint(GF_E_DOUBLEL)
       return 0
     return 1
-  if rquad:
-    if mult_type != GF_MULT_TABLE:
-      gf_errno = GF_E_QUAD_T
+  if bool(rquad):
+    if mult_type != int32(GF_MULT_TABLE):
+      gf_errno = int32(GF_E_QUAD_T)
       return 0
     if w != 4:
-      gf_errno = GF_E_QUAD_W
+      gf_errno = cint(GF_E_QUAD_W)
       return 0
-    if rsimd or rnosimd or raltmap:
-      gf_errno = GF_E_QUAD_J
+    if bool(rsimd or rnosimd or raltmap):
+      gf_errno = cint(GF_E_QUAD_J)
       return 0
     return 1
-  if rlazy:
-    gf_errno = GF_E_LAZY_X
+  if bool(rlazy):
+    gf_errno = cint(GF_E_LAZY_X)
     return 0
-  if mult_type == GF_MULT_SHIFT:
-    if raltmap:
-      gf_errno = GF_E_ALTSHIF
+  if mult_type == cint(GF_MULT_SHIFT):
+    if bool(raltmap):
+      gf_errno = cint(GF_E_ALTSHIF)
       return 0
-    if rsimd or rnosimd:
-      gf_errno = GF_E_SSESHIF
+    if bool(rsimd or rnosimd):
+      gf_errno = cint(GF_E_SSESHIF)
       return 0
     return 1
-  if mult_type == GF_MULT_CARRY_FREE:
+  if mult_type == cint(GF_MULT_CARRY_FREE):
     if w != 4 and w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
-      gf_errno = GF_E_CFM_W
+      gf_errno = cint(GF_E_CFM_W)
       return 0
-    if w == 4 and (poly and 0x0000000C):
-      gf_errno = GF_E_CFM4POL
+    if w == 4 and (poly == 0x0000000C):
+      gf_errno = cint(GF_E_CFM4POL)
       return 0
-    if w == 8 and (poly and 0x00000080):
-      gf_errno = GF_E_CFM8POL
+    if w == 8 and (poly == 0x00000080):
+      gf_errno = cint(GF_E_CFM8POL)
       return 0
-    if w == 16 and (poly and 0x0000E000):
-      gf_errno = GF_E_CF16POL
+    if w == 16 and (poly == 0x0000E000):
+      gf_errno = cint(GF_E_CF16POL)
       return 0
-    if w == 32 and (poly and 0xFE000000):
-      gf_errno = GF_E_CF32POL
+    if w == 32 and (int64(poly) == 0xFE000000):
+      gf_errno = cint(GF_E_CF32POL)
       return 0
-    if w == 64 and (poly and 0xFFFE000000000000'i64):
-      gf_errno = GF_E_CF64POL
+    if w == 64 and (int64(poly) == 0xFFFE000000000000'i64):
+      gf_errno = cint(GF_E_CF64POL)
       return 0
-    if raltmap:
-      gf_errno = GF_E_ALT_CFM
+    if bool(raltmap):
+      gf_errno = cint(GF_E_ALT_CFM)
       return 0
-    if rsimd or rnosimd:
-      gf_errno = GF_E_SSE_CFM
+    if bool(rsimd or rnosimd):
+      gf_errno = cint(GF_E_SSE_CFM)
       return 0
-    if not pclmul:
-      gf_errno = GF_E_PCLMULX
+    if bool(not pclmul):
+      gf_errno = cint(GF_E_PCLMULX)
       return 0
     return 1
-  if mult_type == GF_MULT_CARRY_FREE_GK:
+  if mult_type == cint(GF_MULT_CARRY_FREE_GK):
     if w != 4 and w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
-      gf_errno = GF_E_CFM_W
+      gf_errno = cint(GF_E_CFM_W)
       return 0
-    if raltmap:
-      gf_errno = GF_E_ALT_CFM
+    if bool(raltmap):
+      gf_errno = cint(GF_E_ALT_CFM)
       return 0
-    if rsimd or rnosimd:
-      gf_errno = GF_E_SSE_CFM
+    if bool(rsimd or rnosimd):
+      gf_errno = cint(GF_E_SSE_CFM)
       return 0
-    if not pclmul:
-      gf_errno = GF_E_PCLMULX
-      return 0
-    return 1
-  if mult_type == GF_MULT_BYTWO_p or mult_type == GF_MULT_BYTWO_b:
-    if raltmap:
-      gf_errno = GF_E_ALT_BY2
-      return 0
-    if rsimd and not sse2:
-      gf_errno = GF_E_BY2_SSE
+    if bool(not pclmul):
+      gf_errno = cint(GF_E_PCLMULX)
       return 0
     return 1
-  if mult_type == GF_MULT_LOG_TABLE or mult_type == GF_MULT_LOG_ZERO or
-      mult_type == GF_MULT_LOG_ZERO_EXT:
+  if mult_type == int64(GF_MULT_BYTWO_p) or mult_type == int64(GF_MULT_BYTWO_b):
+    if bool(raltmap):
+      gf_errno = cint(GF_E_ALT_BY2)
+      return 0
+    if bool(rsimd and not sse2):
+      gf_errno = cint(GF_E_BY2_SSE)
+      return 0
+    return 1
+  if mult_type == int64(GF_MULT_LOG_TABLE) or mult_type == int64(GF_MULT_LOG_ZERO) or
+      mult_type == int64(GF_MULT_LOG_ZERO_EXT):
     if w > 27:
-      gf_errno = GF_E_LOGBADW
+      gf_errno = cint(GF_E_LOGBADW)
       return 0
-    if raltmap or rsimd or rnosimd:
-      gf_errno = GF_E_LOG_J
+    if bool(raltmap or rsimd or rnosimd):
+      gf_errno = cint(GF_E_LOG_J)
       return 0
-    if mult_type == GF_MULT_LOG_TABLE: return 1
+    if mult_type == int64(GF_MULT_LOG_TABLE):
+      return 1
     if w != 8 and w != 16:
-      gf_errno = GF_E_ZERBADW
+      gf_errno = cint(GF_E_ZERBADW)
       return 0
-    if mult_type == GF_MULT_LOG_ZERO: return 1
+    if mult_type == int64(GF_MULT_LOG_ZERO):
+      return 1
     if w != 8:
-      gf_errno = GF_E_ZEXBADW
+      gf_errno = cint(GF_E_ZEXBADW)
       return 0
     return 1
-  if mult_type == GF_MULT_GROUP:
+  if mult_type == int64(GF_MULT_GROUP):
     if arg1 <= 0 or arg2 <= 0:
-      gf_errno = GF_E_GR_ARGX
+      gf_errno = cint(GF_E_GR_ARGX)
       return 0
     if w == 4 or w == 8:
-      gf_errno = GF_E_GR_W_48
+      gf_errno = cint(GF_E_GR_W_48)
       return 0
     if w == 16 and (arg1 != 4 or arg2 != 4):
-      gf_errno = GF_E_GR_W_16
+      gf_errno = cint(GF_E_GR_W_16)
       return 0
     if w == 128 and (arg1 != 4 or (arg2 != 4 and arg2 != 8 and arg2 != 16)):
-      gf_errno = GF_E_GR_128A
+      gf_errno = cint(GF_E_GR_128A)
       return 0
     if arg1 > 27 or arg2 > 27:
-      gf_errno = GF_E_GR_A_27
+      gf_errno = cint(GF_E_GR_A_27)
       return 0
     if arg1 > w or arg2 > w:
-      gf_errno = GF_E_GR_AR_W
+      gf_errno = cint(GF_E_GR_AR_W)
       return 0
-    if raltmap or rsimd or rnosimd:
-      gf_errno = GF_E_GR_J
+    if bool(raltmap or rsimd or rnosimd):
+      gf_errno = cint(GF_E_GR_J)
       return 0
     return 1
-  if mult_type == GF_MULT_TABLE:
+  if mult_type == int64(GF_MULT_TABLE):
     if w != 16 and w >= 15:
-      gf_errno = GF_E_TABLE_W
+      gf_errno = cint(GF_E_TABLE_W)
       return 0
-    if w != 4 and (rsimd or rnosimd):
-      gf_errno = GF_E_TAB_SSE
+    if w != 4:
+        if bool(rsimd or rnosimd):
+          gf_errno = cint(GF_E_TAB_SSE)
+          return 0
+        return 1
+
+    if bool(rsimd and not sse3):
+      gf_errno =cint(GF_E_TABSSE3)
       return 0
-    if rsimd and not sse3:
-      gf_errno = GF_E_TABSSE3
-      return 0
-    if raltmap:
-      gf_errno = GF_E_TAB_ALT
+    if bool(raltmap):
+      gf_errno = cint(GF_E_TAB_ALT)
       return 0
     return 1
-  if mult_type == GF_MULT_SPLIT_TABLE:
+  if mult_type == int64(GF_MULT_SPLIT_TABLE):
     if arg1 > arg2:
       tmp = arg1
       arg1 = arg2
       arg2 = tmp
+
     if w == 8:
       if arg1 != 4 or arg2 != 8:
-        gf_errno = GF_E_SP_8_AR
+        gf_errno = cint(GF_E_SP_8_AR)
         return 0
-      if rsimd and not sse3:
-        gf_errno = GF_E_SP_SSE3
+      if bool(rsimd and not sse3):
+        gf_errno = cint(GF_E_SP_SSE3)
         return 0
-      if raltmap:
-        gf_errno = GF_E_SP_8_A
+      if bool(raltmap):
+        gf_errno = cint(GF_E_SP_8_A)
         return 0
     elif w == 16:
       if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 16):
-        if rsimd or rnosimd:
-          gf_errno = GF_E_SP_16_S
+        if bool(rsimd or rnosimd):
+          gf_errno = cint(GF_E_SP_16_S)
           return 0
-        if raltmap:
-          gf_errno = GF_E_SP_16_A
+        if bool(raltmap):
+          gf_errno = cint(GF_E_SP_16_A)
           return 0
       elif arg1 == 4 and arg2 == 16:
-        if rsimd and not sse3:
-          gf_errno = GF_E_SP_SSE3
+        if bool(rsimd and not sse3):
+          gf_errno = cint(GF_E_SP_SSE3)
           return 0
       else:
-        gf_errno = GF_E_SP_16AR
+        gf_errno = cint(GF_E_SP_16AR)
         return 0
     elif w == 32:
       if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 32) or
           (arg1 == 16 and arg2 == 32):
-        if rsimd or rnosimd:
-          gf_errno = GF_E_SP_32_S
+        if bool(rsimd or rnosimd):
+          gf_errno = cint(GF_E_SP_32_S)
           return 0
-        if raltmap:
-          gf_errno = GF_E_SP_32_A
+        if bool(raltmap):
+          gf_errno = cint(GF_E_SP_32_A)
           return 0
       elif arg1 == 4 and arg2 == 32:
-        if rsimd and not sse3:
-          gf_errno = GF_E_SP_SSE3
+        if bool(rsimd and not sse3):
+          gf_errno = cint(GF_E_SP_SSE3)
           return 0
-        if raltmap and not sse3:
-          gf_errno = GF_E_SP_32AS
+        if bool(raltmap and not sse3):
+          gf_errno = cint(GF_E_SP_32AS)
           return 0
-        if raltmap and rnosimd:
-          gf_errno = GF_E_SP_32AS
+        if bool(raltmap and rnosimd):
+          gf_errno = cint(GF_E_SP_32AS)
           return 0
       else:
-        gf_errno = GF_E_SP_32AR
+        gf_errno = cint(GF_E_SP_32AR)
         return 0
     elif w == 64:
       if (arg1 == 8 and arg2 == 8) or (arg1 == 8 and arg2 == 64) or
           (arg1 == 16 and arg2 == 64):
-        if rsimd or rnosimd:
-          gf_errno = GF_E_SP_64_S
+        if bool(rsimd or rnosimd):
+          gf_errno = cint(GF_E_SP_64_S)
           return 0
-        if raltmap:
-          gf_errno = GF_E_SP_64_A
+        if bool(raltmap):
+          gf_errno = cint(GF_E_SP_64_A)
           return 0
       elif arg1 == 4 and arg2 == 64:
-        if rsimd and not sse3:
-          gf_errno = GF_E_SP_SSE3
+        if bool(rsimd and not sse3):
+          gf_errno = cint(GF_E_SP_SSE3)
           return 0
-        if raltmap and not sse3:
-          gf_errno = GF_E_SP_64AS
+        if bool(raltmap and not sse3):
+          gf_errno = cint(GF_E_SP_64AS)
           return 0
-        if raltmap and rnosimd:
-          gf_errno = GF_E_SP_64AS
+        if bool(raltmap and rnosimd):
+          gf_errno = cint(GF_E_SP_64AS)
           return 0
       else:
-        gf_errno = GF_E_SP_64AR
+        gf_errno = cint(GF_E_SP_64AR)
         return 0
     elif w == 128:
       if arg1 == 8 and arg2 == 128:
-        if rsimd or rnosimd:
-          gf_errno = GF_E_SP128_S
+        if bool(rsimd or rnosimd):
+          gf_errno = cint(GF_E_SP128_S)
           return 0
-        if raltmap:
-          gf_errno = GF_E_SP128_A
+        if bool(raltmap):
+          gf_errno = cint(GF_E_SP128_A)
           return 0
       elif arg1 == 4 and arg2 == 128:
-        if rsimd and not sse3:
-          gf_errno = GF_E_SP_SSE3
+        if bool(rsimd and not sse3):
+          gf_errno = cint(GF_E_SP_SSE3)
           return 0
-        if raltmap and not sse3:
-          gf_errno = GF_E_SP128AS
+        if bool(raltmap and not sse3):
+          gf_errno = cint(GF_E_SP128AS)
           return 0
-        if raltmap and rnosimd:
-          gf_errno = GF_E_SP128AS
+        if bool(raltmap and rnosimd):
+          gf_errno = cint(GF_E_SP128AS)
           return 0
       else:
-        gf_errno = GF_E_SP128AR
+        gf_errno = cint(GF_E_SP128AR)
         return 0
     else:
-      gf_errno = GF_E_SPLIT_W
+      gf_errno = cint(GF_E_SPLIT_W)
       return 0
     return 1
-  if mult_type == GF_MULT_COMPOSITE:
+  if mult_type == int64(GF_MULT_COMPOSITE):
     if w != 8 and w != 16 and w != 32 and w != 64 and w != 128:
-      gf_errno = GF_E_COMP_W
+      gf_errno = cint(GF_E_COMP_W)
       return 0
-    if w < 128 and (poly shr (w div 2)) != 0:
-      gf_errno = GF_E_COMP_PP
+    if w < 128 and (int64(poly) shr (w div 2)) != 0:
+      gf_errno = cint(GF_E_COMP_PP)
       return 0
     if divide_type != ord(GF_DIVIDE_DEFAULT):
-      gf_errno = GF_E_DIVCOMP
+      gf_errno = cint(GF_E_DIVCOMP)
       return 0
     if arg1 != 2:
-      gf_errno = GF_E_COMP_A2
+      gf_errno = cint(GF_E_COMP_A2)
       return 0
-    if rsimd or rnosimd:
-      gf_errno = GF_E_COMP_SS
+    if bool(rsimd or rnosimd):
+      gf_errno = cint(GF_E_COMP_SS)
       return 0
     if base != nil:
       sub = cast[ptr gf_internal_t](base.scratch)
       if sub.w != w div 2:
-        gf_errno = GF_E_BASE_W
+        gf_errno = cint(GF_E_BASE_W)
         return 0
       if poly == 0:
         if gf_composite_get_default_poly(base) == 0:
-          gf_errno = GF_E_COMPXPP
+          gf_errno = cint(GF_E_COMPXPP)
           return 0
     return 1
-  gf_errno = GF_E_UNKNOWN
+  gf_errno = cint(GF_E_UNKNOWN)
   return 0
 
 proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: cint;
