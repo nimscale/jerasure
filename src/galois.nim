@@ -36,7 +36,7 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
-import errors, typedefinitions
+import errors, typedefinitions, galiosproc
 
 var gf_errno*: cint
 
@@ -124,6 +124,60 @@ type
     GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID
 
 #var GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID: cint
+
+proc gf_composite_get_default_poly*(base: ptr gf_t): uint64 {.cdecl.} =
+  var h: ptr gf_internal_t
+  var rv: uint64
+  h = cast[ptr gf_internal_t](base.scratch)
+  if h.w == 4:
+    if h.mult_type == cint(GF_MULT_COMPOSITE): return 0
+    if h.prim_poly == 0x00000013: return 2
+    return 0
+  if h.w == 8:
+    if h.mult_type == cint(GF_MULT_COMPOSITE): return 0
+    if h.prim_poly == 0x0000011D: return 3
+    return 0
+  if h.w == 16:
+    if h.mult_type == cint(GF_MULT_COMPOSITE):
+      rv = gf_composite_get_default_poly(h.base_gf)
+      if rv != h.prim_poly: return 0
+      if rv == 3: return 0x00000105
+      return 0
+    else:
+      if h.prim_poly == 0x0001100B: return 2
+      if h.prim_poly == 0x0001002D: return 7
+      return 0
+  if h.w == 32:
+    if h.mult_type == cint(GF_MULT_COMPOSITE):
+      rv = gf_composite_get_default_poly(h.base_gf)
+      if rv != h.prim_poly: return 0
+      if rv == 2: return 0x00010005
+      if rv == 7: return 0x00010008
+      if rv == 0x00000105: return 0x00010002
+      return 0
+    else:
+      if h.prim_poly == 0x00400007: return 2
+      if h.prim_poly == 0x000000C5: return 3
+      return 0
+  if h.w == 64:
+    if h.mult_type == cint(GF_MULT_COMPOSITE):
+      rv = gf_composite_get_default_poly(h.base_gf)
+      if rv != h.prim_poly: return 0
+      if rv == 3:
+        return uint64(0x0000000100000009'i64)
+      if rv == 2:
+        return uint64(0x0000000100000004'i64)
+      if rv == 0x00010005:
+        return uint64(0x0000000100000003'i64)
+      if rv == 0x00010002:
+        return uint64(0x0000000100000005'i64)
+      if rv == 0x00010008:
+        return uint64(0x0000000100000006'i64)
+      return 0
+    else:
+      if h.prim_poly == 0x0000001B: return 2
+      return 0
+  return 0
 
 proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
                     arg1: var cint; arg2: var cint; poly: uint64; base: ptr gf_t): cint {.cdecl.} =
@@ -494,8 +548,114 @@ proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: c
   gf_errno = cint(GF_E_UNKNOWN)
   return 0
 
+proc gf_w4_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint; arg1: var cint; arg2: var cint): cint {.cdecl.} =
+
+  case mult_type
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    return int32(sizeof(gf_internal_t)+ sizeof(gf_bytwo_data))
+  of cint(GF_MULT_DEFAULT), cint(GF_MULT_TABLE):
+    if region_type == GF_REGION_CAUCHY:
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_single_table_data](+ 64)))
+    if mult_type == cint(GF_MULT_DEFAULT) and not bool((gf_cpu_supports_arm_neon or gf_cpu_supports_intel_ssse3)):
+
+      region_type = GF_REGION_DOUBLE_TABLE
+    if bool(region_type and GF_REGION_DOUBLE_TABLE):
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_double_table_data](+ 64)))
+    elif bool(region_type and GF_REGION_QUAD_TABLE):
+      if (region_type and GF_REGION_LAZY) == 0:
+        return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_quad_table_data](+ 64)))
+      else:
+        return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_quad_table_lazy_data](+ 64)))
+    else:
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_single_table_data](+ 64)))
+  of int32(GF_MULT_LOG_TABLE):
+    return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_logtable_data](+ 64)))
+  of int32(GF_MULT_CARRY_FREE):
+    return int32(sizeof((gf_internal_t)))
+  of int32(GF_MULT_SHIFT):
+    return int32(sizeof((gf_internal_t)))
+  else:
+    return 0
+  return 0
+
+proc gf_w8_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint;
+                        arg1: cint; arg2: cint): cint {.cdecl.} =
+  case mult_type
+  of int32(GF_MULT_DEFAULT):
+    if bool(gf_cpu_supports_intel_ssse3 or gf_cpu_supports_arm_neon):
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_default_data](+ 64)))
+
+    return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_single_table_data](+ 64)))
+
+  of int32(GF_MULT_TABLE):
+    if region_type == GF_REGION_CAUCHY:
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_single_table_data](+ 64)))
+
+    if bool(region_type == GF_REGION_DEFAULT):
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_single_table_data](+ 64)))
+
+    if bool(region_type and GF_REGION_DOUBLE_TABLE):
+      if region_type == GF_REGION_DOUBLE_TABLE:
+        return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_double_table_data](+ 64)))
+
+      elif region_type == (GF_REGION_DOUBLE_TABLE or GF_REGION_LAZY):
+        return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_double_table_lazy_data](+ 64)))
+
+      else:
+        return 0
+    return 0
+
+  of int32(GF_MULT_BYTWO_p), int32(GF_MULT_BYTWO_b):
+    return int32(sizeof((gf_internal_t)) + sizeof(gf_w8_bytwo_data))
+
+  of int32(GF_MULT_SPLIT_TABLE):
+    if (arg1 == 4 and arg2 == 8) or (arg1 == 8 and arg2 == 4):
+      return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_half_table_data](+ 64)))
+
+  of int32(GF_MULT_LOG_TABLE):
+    return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_logtable_data](+ 64)))
+
+  of int32(GF_MULT_LOG_ZERO):
+    return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_logzero_small_table_data](+ 64)))
+
+  of int32(GF_MULT_LOG_ZERO_EXT):
+    return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_logzero_table_data](+ 64)))
+
+  of int32(GF_MULT_CARRY_FREE):
+    return sizeof((gf_internal_t))
+
+  of int32(GF_MULT_SHIFT):
+    return sizeof((gf_internal_t))
+
+  of int32(GF_MULT_COMPOSITE):
+    return sizeof((gf_internal_t)) + sizeof(cast[gf_w8_composite_data](+ 64))
+
+  else:
+    return 0
+  return 0
+
+proc gf_scratch_size*(w: cint; mult_type: cint; region_type: var cint; divide_type: var cint;
+                     arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  if gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, 0, nil) == 0:
+    return 0
+  case w
+  of 4:
+    return gf_w4_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  of 8:
+    return gf_w8_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  of 16:
+    return gf_w16_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  of 32:
+    return gf_w32_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  of 64:
+    return gf_w64_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  of 128:
+    return gf_w128_scratch_size(mult_type, region_type, divide_type, arg1, arg2)
+  else:
+    return gf_wgen_scratch_size(w, mult_type, region_type, divide_type, arg1, arg2)
+
 proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: cint;
-                  divide_type: cint; prim_poly: uint64; arg1: cint; arg2: cint;
+                  divide_type: cint; prim_poly: uint64; arg1: var cint; arg2: var cint;
                   base_gf: ptr gf_t; scratch_memory: pointer): cint {.cdecl.} =
   var sz: cint
   var h: ptr gf_internal_t
