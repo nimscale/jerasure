@@ -622,20 +622,226 @@ proc gf_w8_scratch_size*(mult_type: cint; region_type: var cint; divide_type: va
     return int32(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_logzero_table_data](+ 64)))
 
   of int32(GF_MULT_CARRY_FREE):
-    return sizeof((gf_internal_t))
+    return cint(sizeof((gf_internal_t)))
 
   of int32(GF_MULT_SHIFT):
-    return sizeof((gf_internal_t))
+    return cint(sizeof((gf_internal_t)))
 
   of int32(GF_MULT_COMPOSITE):
-    return sizeof((gf_internal_t)) + sizeof(cast[gf_w8_composite_data](+ 64))
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w8_composite_data](+ 64)))
 
   else:
     return 0
   return 0
 
-proc gf_scratch_size*(w: cint; mult_type: cint; region_type: var cint; divide_type: var cint;
-                     arg1: var cint; arg2: var cint): cint {.cdecl.} =
+proc gf_w16_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint;
+                         arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  case mult_type
+  of cint(GF_MULT_TABLE):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_lazytable_data](+ 64)))
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    return cint(sizeof((gf_internal_t)) + sizeof(gf_w16_bytwo_data))
+  of cint(GF_MULT_LOG_ZERO):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_zero_logtable_data](+ 64)))
+  of cint(GF_MULT_LOG_TABLE):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_logtable_data](+ 64)))
+  of cint(GF_MULT_DEFAULT), cint(GF_MULT_SPLIT_TABLE):
+    if arg1 == 8 and arg2 == 8:
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_split_8_8_data](+ 64)))
+    elif (arg1 == 8 and arg2 == 16) or (arg2 == 8 and arg1 == 16):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_logtable_data](+ 64)))
+    elif mult_type == cint(GF_MULT_DEFAULT) or (arg1 == 4 and arg2 == 16) or (arg2 == 4 and arg1 == 16):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_logtable_data](+ 64)))
+    return 0
+  of cint(GF_MULT_GROUP):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_group_4_4_data](+ 64)))
+  of cint(GF_MULT_CARRY_FREE):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_SHIFT):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_COMPOSITE):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w16_composite_data](+ 64)))
+  else:
+    return 0
+  return 0
+
+proc gf_w32_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint;
+                         arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  case mult_type
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    return cint(sizeof(gf_internal_t)+ sizeof(cast[gf_w32_bytwo_data](+ 64)))
+
+  of cint(GF_MULT_GROUP):
+    #return sizeof(gf_internal_t)  + sizeof(cast[gf_w32_group_data](+ sizeof(int32))) * (1 shl arg1)))) + sizeof((int32) * (1 shl arg2)) + 64
+    return cint(sizeof(gf_internal_t) + sizeof(cast[gf_w32_group_data]( + cint(cint(sizeof(uint32)   * cint(1 shl arg1))))) + cint(cint(sizeof(int32)) * cint(1 shl arg2) + 64))
+    #return  sizeof(cast[gf_w32_group_data](+ sizeof(int32)))  #* (1 shl arg1)))) + sizeof(int32) * (1 shl arg2) + 64
+
+  of cint(GF_MULT_DEFAULT), cint(GF_MULT_SPLIT_TABLE):
+    if arg1 == 8 and arg2 == 8:
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w32_split_8_8_data](+ 64)))
+    if (arg1 == 16 and arg2 == 32) or (arg2 == 16 and arg1 == 32):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_16_32_lazy_data](+ 64)))
+    if (arg1 == 2 and arg2 == 32) or (arg2 == 2 and arg1 == 32):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_2_32_lazy_data](+ 64)))
+    if (arg1 == 8 and arg2 == 32) or (arg2 == 8 and arg1 == 32) or
+          (bool(mult_type == cint(GF_MULT_DEFAULT)) and not bool((gf_cpu_supports_intel_ssse3 or gf_cpu_supports_arm_neon))):
+
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_8_32_lazy_data](+ 64)))
+
+    if (arg1 == 4 and arg2 == 32) or (arg2 == 4 and arg1 == 32) or mult_type == cint(GF_MULT_DEFAULT):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_4_32_lazy_data](+ 64)))
+    return 0
+  of cint(GF_MULT_CARRY_FREE):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_CARRY_FREE_GK):
+    return cint(sizeof((gf_internal_t)) + (cint(sizeof((uint64))) * 2))
+
+  of cint(GF_MULT_SHIFT):
+    return cint(sizeof((gf_internal_t)))
+
+  of cint(GF_MULT_COMPOSITE):
+    return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w32_composite_data](+ 64)))
+  else:
+    return 0
+  return 0
+
+proc gf_w64_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint;
+                         arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  case mult_type
+  of cint(GF_MULT_SHIFT):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_CARRY_FREE):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    return cint(sizeof((gf_internal_t)))
+  of cint(GF_MULT_DEFAULT): ##  Allen: set the *local* arg1 and arg2, just for scratch size purposes,
+                    ##  then fall through to split table scratch size code.
+                    ## #if defined(INTEL_SSE4) || defined(ARCH_AARCH64)
+    if bool(gf_cpu_supports_intel_sse4 or gf_cpu_supports_arm_neon):
+      arg1 = 64
+      arg2 = 4
+    else:
+      ## #endif
+      arg1 = 64
+      arg2 = 8
+      ## #if defined(INTEL_SSE4) || defined(ARCH_AARCH64)
+    ## #endif
+  of cint(GF_MULT_SPLIT_TABLE):
+    if arg1 == 8 and arg2 == 8:
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_8_8_data](+ 64)))
+    if (arg1 == 16 and arg2 == 64) or (arg2 == 16 and arg1 == 64):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_16_64_lazy_data](+ 64)))
+    if (arg1 == 8 and arg2 == 64) or (arg2 == 8 and arg1 == 64):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_8_64_lazy_data](+ 64)))
+    if (arg1 == 64 and arg2 == 4) or (arg1 == 4 and arg2 == 64):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_split_4_64_lazy_data](+ 64)))
+    return 0
+  of cint(GF_MULT_GROUP):
+    return cint(sizeof(gf_internal_t) + sizeof(cast[gf_w64_group_data]( + cint(cint(sizeof(uint64)   * cint(1 shl arg1))))) + cint(cint(sizeof(uint64)) * cint(1 shl arg2) + 64))
+    #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_w32_group_data]( + cint(cint(sizeof(uint32)   * cint(1 shl arg1))))) + cint(cint(sizeof(int32)) * cint(1 shl arg2) + 64))
+
+  of cint(GF_MULT_COMPOSITE):
+    if arg1 == 2:
+      return cint(sizeof((gf_internal_t)) + 64)
+    return 0
+  else:
+    return 0
+
+proc gf_w128_scratch_size*(mult_type: cint; region_type: var cint; divide_type: var cint;
+                          arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  var
+    size_m: cint
+    size_r: cint
+  if divide_type == cint(GF_DIVIDE_MATRIX):
+    return 0
+  case mult_type
+  of cint(GF_MULT_CARRY_FREE):
+    return cint(sizeof(gf_internal_t))
+  of cint(GF_MULT_SHIFT):
+    return cint(sizeof(gf_internal_t))
+
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    return cint(sizeof(gf_internal_t))
+
+  of cint(GF_MULT_DEFAULT), cint(GF_MULT_SPLIT_TABLE):
+    if (arg1 == 4 and arg2 == 128) or (arg1 == 128 and arg2 == 4):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w128_split_4_128_data](+ 64)))
+
+    elif (arg1 == 8 and arg2 == 128) or (arg1 == 128 and arg2 == 8) or
+        mult_type == cint(GF_MULT_DEFAULT):
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_w128_split_8_128_data](+ 64)))
+    return 0
+  of cint(GF_MULT_GROUP):            ##  JSP We've already error checked the arguments.
+    size_m = cint((1 shl arg1) * 2 * sizeof((uint64)))
+    size_r = cint((1 shl arg2) * 2 * sizeof((uint64)))
+    ##
+    ##  two pointers prepend the table data for structure
+    ##  because the tables are of dynamic size
+    ##
+    return cint(sizeof(gf_internal_t) + size_m + size_r + 4 * sizeof(ptr uint64))
+
+  of cint(GF_MULT_COMPOSITE):
+    if arg1 == 2:
+      return cint(sizeof((gf_internal_t)) + 4)
+    else:
+      return 0
+  else:
+    return 0
+
+proc gf_wgen_scratch_size*(w: cint; mult_type: cint; region_type: var cint;
+                          divide_type: var cint; arg1: var cint; arg2: var cint): cint {.cdecl.} =
+  case mult_type
+  of cint(GF_MULT_DEFAULT):
+    if w <= 8:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] ( + cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint(1 shl w) * 2) + 64)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_w64_group_data] ( + cint(cint(sizeof(uint64)   * cint(1 shl arg1))))) + cint(cint(sizeof(uint64)) * cint(1 shl arg2) + 64))
+
+    elif w <= 16:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_log_w16_data]  ( + cint(cint(sizeof(uint16)   * cint(1 shl w) * 3)))))
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] ( + cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint(1 shl w) * 2) + 64)
+
+    else:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_group_data]    ( + cint(cint(sizeof(uint32)   * cint(1 shl 2))))) + cint(cint(sizeof(uint32) * (1 shl 8))) + 64)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] ( + cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint(1 shl w) * 2) + 64)
+
+  of cint(GF_MULT_SHIFT), cint(GF_MULT_BYTWO_b), cint(GF_MULT_BYTWO_p):
+    return cint(sizeof(gf_internal_t))
+
+  of cint(GF_MULT_GROUP):
+    return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_group_data]    ( + cint(cint(sizeof(uint32)   * cint(1 shl arg1))))) + cint(cint(sizeof(uint32) * (1 shl arg2))) + 64)
+    #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_group_data]    ( + cint(cint(sizeof(uint32)   * cint(1 shl 2)))))    + cint(cint(sizeof(uint32) * (1 shl 8))) + 64)
+
+  of cint(GF_MULT_TABLE):
+    if w <= 8:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint((1 shl w) * 2)) + 64)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_group_data]    ( + cint(cint(sizeof(uint32)   * cint(1 shl arg1))))) + cint(cint(sizeof(uint32) * (1 shl arg2))) + 64)
+
+    elif w < 15:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w16_data](+ cint(cint(sizeof(uint16)   * cint(1 shl w))))) * cint(cint((1 shl w) * 2)) + 64)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint((1 shl w) * 2)) + 64)
+
+    return 0
+  of cint(GF_MULT_LOG_TABLE):
+    if w <= 8:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_log_w8_data]   (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * 3)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_table_w8_data] (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * cint(cint((1 shl w) * 2)) + 64)
+
+    elif w <= 16:
+      return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_log_w16_data]  (+ cint(cint(sizeof(uint16)   * cint(1 shl w))))) * 3)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_log_w8_data]   (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * 3)
+
+    elif w <= 27:
+      return cint(sizeof((gf_internal_t)) + sizeof(cast[gf_wgen_log_w32_data](+ cint(cint(sizeof(uint32)   * cint(1 shl w))))) * 3)
+      #return cint(sizeof(gf_internal_t) + sizeof(cast[gf_wgen_log_w8_data]   (+ cint(cint(sizeof(uint8)    * cint(1 shl w))))) * 3)
+
+    else:
+      return 0
+  else:
+    return 0
+
+
+proc gf_scratch_size*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
+                     arg1: cint; arg2:  cint): cint {.cdecl.} =
   if gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, 0, nil) == 0:
     return 0
   case w
