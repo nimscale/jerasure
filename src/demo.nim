@@ -1,5 +1,5 @@
 #import jerasure
-import galois
+#import galois
 #import cauchy
 #import system
 
@@ -25,15 +25,36 @@ proc yes(n:var cint, y:var cint): cint =
 #var N: cast[ptr uint8[uint8]](c)
 var N = cast[ptr uint8](c)
 
-var xxy = int(1.0 / 3) # type conversion
 
-var y = "Foobar"
-proc ffi(foo: ptr array[6, char]) = echo repr(foo)
+type
+  gf_val_32_t* = uint32
+  gf_val_64_t* = uint64
+  gf_val_128_t* = ptr uint64
 
-ffi(cast[ptr array[6, char]](addr y[0]))
+proc gf_w4_shift_multiply*(bb: var cint; a: gf_val_32_t; b: gf_val_32_t): cint  =
+    #cho "Welcome"
+    return bb
 
-var s = "12"
+var
+    a: cint
+    bc: cint
+    ca: cint
+    prod: cint
+    ab: cint
 
-proc fff(str: ptr uint8) = echo repr(str)
 
-fff(cast[ptr uint8](s))
+#var new = cast[gf_val_32_t](bc)
+#echo new
+echo gf_w4_shift_multiply(c, cast[gf_val_32_t](a), cast[gf_val_32_t](bc))
+#var xxy = int(1.0 / 3) # type conversion
+
+#var y = "Foobar"
+#proc ffi(foo: ptr array[6, char]) = echo repr(foo)
+
+#ffi(cast[ptr array[6, char]](addr y[0]))
+
+#var s = "12"
+
+#proc fff(str: ptr uint8) = echo repr(str)
+
+#fff(cast[ptr uint8](s))

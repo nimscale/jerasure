@@ -997,7 +997,7 @@ proc gf_w4_shift_multiply*(gf: ptr gf_t; a: gf_val_32_t; b: gf_val_32_t): gf_val
     if bool(int32(product) and (1 shl int32(i))):
        product = product xor (pp shl (i - GF_FIELD_WIDTH))
        dec(i)
-  return product
+  return cast[gf_val_32_t](product)
 
 proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   var h: ptr gf_internal_t
@@ -1008,6 +1008,7 @@ proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
     c: cint
     prod: cint
     ab: cint
+
   var mult: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
   h = cast[ptr gf_internal_t](gf.scratch)
   std = cast[ptr gf_double_table_data](h.private)
@@ -1017,9 +1018,13 @@ proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   while a < GF_FIELD_SIZE:
     b = 1
     while b < GF_FIELD_SIZE:
-      prod = gf_w4_shift_multiply(gf, a, b)
-      mult[a][b] = prod
-      std.`div`[prod][b] = a
+      #prod = gf_w4_shift_multiply(gf, a, b)
+      prod = cast[cint](gf_w4_shift_multiply(gf, cast[gf_val_32_t](a), cast[gf_val_32_t](b)))
+
+      #galois.gf_w4_shift_multiply(gf: ptr gf_t, a: gf_val_32_t, b: gf_val_32_t)
+      #gf: ptr gf_t; a: gf_val_32_t; b: gf_val_32_t
+      mult[a][b] = cast[uint8](prod)
+      #std.`div`[prod][b] = a
       inc(b)
     inc(a)
   #bzero(std.mult,
@@ -1028,10 +1033,10 @@ proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   while a < GF_FIELD_SIZE:
     b = 0
     while b < GF_FIELD_SIZE:
-      ab = mult[a][b]
+      ab = cast[cint](mult[a][b])
       c = 0
       while c < GF_FIELD_SIZE:
-        std.mult[a][(b shl 4) or c] = ((ab shl 4) or mult[a][c])
+        std.mult[a][(b shl 4) or c] = uint8(uint8(ab shl 4) or uint8(mult[a][c]))
         inc(c)
       inc(b)
     inc(a)
@@ -1041,6 +1046,102 @@ proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   SET_FUNCTION(gf, multiply_region, w32, gf_w4_double_table_multiply_region)
   return 1
 
+proc gf_w4_quad_table_lazy_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var std: ptr gf_quad_table_lazy_data
+  var
+    a: cint
+    b: cint
+    prod: cint
+    loga: cint
+    logb: cint
+  var log_tbl: array[GF_FIELD_SIZE, uint8]
+  var antilog_tbl: array[GF_FIELD_SIZE * 2, uint8]
+  h = cast[ptr gf_internal_t](gf.scratch)
+  std = cast[ptr gf_quad_table_lazy_data](h.private)
+  b = 1
+  a = 0
+  while a < GF_MULT_GROUP_SIZE:
+    log_tbl[b] = cast[uint8](a)
+    antilog_tbl[a] = cast[uint8](b)
+    antilog_tbl[a + GF_MULT_GROUP_SIZE] = cast[uint8](b)
+    b = b shl 1
+    if bool(b and GF_FIELD_SIZE):
+      b = b xor cast[cint](h.prim_poly)
+    inc(a)
+  #bzero(std.smult, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  #bzero(std.`div`, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+
+  a = 1
+  while a < GF_FIELD_SIZE:
+    loga = cast[cint](log_tbl[a])
+    b = 1
+    while b < GF_FIELD_SIZE:
+      logb = cast[cint](log_tbl[b])
+      prod = cast[cint](antilog_tbl[loga + logb])
+      std.smult[a][b] = cast[uint8](prod)
+      std.`div`[prod][b] = cast[uint8](a)
+      inc(b)
+    inc(a)
+  SET_FUNCTION(gf, inverse, w32, nil)
+  SET_FUNCTION(gf, divide, w32, gf_w4_quad_table_lazy_divide)
+  SET_FUNCTION(gf, multiply, w32, gf_w4_quad_table_lazy_multiply)
+  SET_FUNCTION(gf, multiply_region, w32, gf_w4_quad_table_multiply_region)
+  return 1
+
+proc gf_w4_quad_table_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var std: ptr gf_quad_table_data
+  var
+    prod: cint
+    val: cint
+    a: cint
+    b: cint
+    c: cint
+    d: cint
+    va: cint
+    vb: cint
+    vc: cint
+    vd: cint
+  var mult: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
+  h = cast[ptr gf_internal_t](gf.scratch)
+  std = cast[ptr gf_quad_table_data](h.private)
+  #bzero(mult, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  #bzero(std.`div`, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  a = 1
+  while a < GF_FIELD_SIZE:
+    b = 1
+    while b < GF_FIELD_SIZE:
+      prod = gf_w4_shift_multiply(gf, a, b)
+      mult[a][b] = prod
+      std.`div`[prod][b] = a
+      inc(b)
+    inc(a)
+  val = 0
+  while val < 16:
+    a = 0
+    while a < 16:
+      va = (mult[val][a] shl 12)
+      b = 0
+      while b < 16:
+        vb = (mult[val][b] shl 8)
+        c = 0
+        while c < 16:
+          vc = (mult[val][c] shl 4)
+          d = 0
+          while d < 16:
+            vd = mult[val][d]
+            std.mult[val][(a shl 12) or (b shl 8) or (c shl 4) or d] = (va or vb or vc or vd)
+            inc(d)
+          inc(c)
+        inc(b)
+      inc(a)
+    inc(val)
+  SET_FUNCTION(gf, inverse, w32, nil)
+  SET_FUNCTION(gf, divide, w32, gf_w4_quad_table_divide)
+  SET_FUNCTION(gf, multiply, w32, gf_w4_quad_table_multiply)
+  SET_FUNCTION(gf, multiply_region, w32, gf_w4_quad_table_multiply_region)
+  return 1
 
 proc gf_w4_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   var rt: cint
@@ -1051,8 +1152,8 @@ proc gf_w4_table_init*(gf: ptr gf_t): cint {.cdecl.} =
     rt = rt or GF_REGION_DOUBLE_TABLE
   if bool(rt and GF_REGION_DOUBLE_TABLE):
     return gf_w4_double_table_init(gf)
-  elif rt and GF_REGION_QUAD_TABLE:
-    if rt and GF_REGION_LAZY:
+  elif bool(rt and GF_REGION_QUAD_TABLE):
+    if bool(rt and GF_REGION_LAZY):
       return gf_w4_quad_table_lazy_init(gf)
     else:
       return gf_w4_quad_table_init(gf)
