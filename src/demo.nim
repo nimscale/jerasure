@@ -21,13 +21,19 @@ proc yes(n:var cint, y:var cint): cint =
     echo n
     echo y
 
-#echo cauchy_n_ones(b, c);
-#echo yes(b, c)
-#if c == 4 and (b == 0x0000000C):
-#  echo "it works"
-#if c == 32 and (int64(b) == 0xFE000000):
-#  echo "it works"
-#if (c or 4) and (x or xx): #Error: unhandled exception: value out of range: 8 [RangeError]
-#  echo "They are just working on it!"
+#ptr [c](uint8)
+#var N: cast[ptr uint8[uint8]](c)
+var N = cast[ptr uint8](c)
 
-#echo x or xx and  c or 4
+var xxy = int(1.0 / 3) # type conversion
+
+var y = "Foobar"
+proc ffi(foo: ptr array[6, char]) = echo repr(foo)
+
+ffi(cast[ptr array[6, char]](addr y[0]))
+
+var s = "12"
+
+proc fff(str: ptr uint8) = echo repr(str)
+
+fff(cast[ptr uint8](s))

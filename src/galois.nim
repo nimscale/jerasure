@@ -79,6 +79,16 @@ type
     w32*: proc (gf: GFP; a: gf_val_32_t; b: gf_val_32_t): gf_val_32_t
     w64*: proc (gf: GFP; a: gf_val_64_t; b: gf_val_64_t): gf_val_64_t
     w128*: proc (gf: GFP; a: gf_val_128_t; b: gf_val_128_t; c: gf_val_128_t)
+# Template definistions follows
+template SET_FUNCTION*(gf, `method`, size, `func`: untyped): void =
+  nil
+
+#gf.`method`.size = (`func`)
+#(cast[ptr gf_internal_t]((gf).scratch)).`method` = `func`
+#template SET_FUNCTION*(gf, `method`, size, `func`: untyped): void =
+#  nil
+
+#(gf).`method`.size = (`func`)
 
 type
   gf_t* = object
@@ -103,6 +113,7 @@ type
     arg2*: cint
     base_gf*: ptr gf_t
     private*: pointer
+    log_g_table*: ptr gf_logtable_data
 
 ## The following were got from gf_complete.h
 const
@@ -179,7 +190,7 @@ proc gf_composite_get_default_poly*(base: ptr gf_t): uint64 {.cdecl.} =
       return 0
   return 0
 
-proc gf_error_check*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
+proc gf_error_check*(w: cint; mult_type: cint; region_type: var cint; divide_type: var cint;
                     arg1: var cint; arg2: var cint; poly: uint64; base: ptr gf_t): cint {.cdecl.} =
   var sse3: cint
   var sse2: cint
@@ -840,8 +851,11 @@ proc gf_wgen_scratch_size*(w: cint; mult_type: cint; region_type: var cint;
     return 0
 
 
-proc gf_scratch_size*(w: cint; mult_type: cint; region_type: cint; divide_type: cint;
-                     arg1: cint; arg2:  cint): cint {.cdecl.} =
+proc gf_scratch_size*(w: cint; mult_type: cint; region_type: var cint; divide_type: var cint;
+                     arg1: var cint; arg2:  var cint): cint {.cdecl.} =
+
+  #gf_error_check*(w: cint; mult_type: cint; region_type: var cint; divide_type: var cint; arg1: var cint; arg2: var cint; poly: uint64; base: ptr gf_t):
+
   if gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, 0, nil) == 0:
     return 0
   case w
@@ -860,25 +874,254 @@ proc gf_scratch_size*(w: cint; mult_type: cint; region_type: cint; divide_type: 
   else:
     return gf_wgen_scratch_size(w, mult_type, region_type, divide_type, arg1, arg2)
 
-proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: cint;
-                  divide_type: cint; prim_poly: uint64; arg1: var cint; arg2: var cint;
+proc gf_w4_cfm_init*(gf: ptr gf_t): cint {.cdecl.} =
+  when defined(INTEL_SSE4_PCLMUL):
+    if gf_cpu_supports_intel_pclmul:
+      SET_FUNCTION(gf, multiply, w32, gf_w4_clm_multiply)
+      return 1
+  elif defined(ARM_NEON):
+    if gf_cpu_supports_arm_neon:
+      return gf_w4_neon_cfm_init(gf)
+  return 0
+
+proc gf_w4_shift_init*(gf: ptr gf_t): cint {.cdecl.} =
+  SET_FUNCTION(gf, multiply, w32, gf_w4_shift_multiply)
+  return 1
+
+proc gf_w4_bytwo_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var
+    ip: uint64
+    m1: uint64
+    m2: uint64
+  var btd: ptr gf_bytwo_data
+  h = cast[ptr gf_internal_t](gf.scratch)
+  btd = cast[ptr gf_bytwo_data]((h.private))
+  ip = h.prim_poly and 0x0000000F
+  m1 = 0x0000000E
+  m2 = 0x00000008
+  btd.prim_poly = 0
+  btd.mask1 = 0
+  btd.mask2 = 0
+  while ip != 0:
+    btd.prim_poly = btd.prim_poly or ip
+    btd.mask1 = btd.mask1 or m1
+    btd.mask2 = btd.mask2 or m2
+    ip = ip shl GF_FIELD_WIDTH
+    m1 = m1 shl GF_FIELD_WIDTH
+    m2 = m2 shl GF_FIELD_WIDTH
+  if h.mult_type == cint(GF_MULT_BYTWO_p):
+    SET_FUNCTION(gf, multiply, w32, gf_w4_bytwo_p_multiply)
+    ## #ifdef INTEL_SSE2
+    if bool(gf_cpu_supports_intel_sse2 and not (h.region_type and GF_REGION_NOSIMD)):
+      SET_FUNCTION(gf, multiply_region, w32, gf_w4_bytwo_p_sse_multiply_region)
+    else:
+      ##     #endif
+      SET_FUNCTION(gf, multiply_region, w32, gf_w4_bytwo_p_nosse_multiply_region)
+      if bool(h.region_type and GF_REGION_SIMD):
+        return 0
+    ## #endif
+  else:
+    SET_FUNCTION(gf, multiply, w32, gf_w4_bytwo_b_multiply)
+    ## #ifdef INTEL_SSE2
+    if bool(gf_cpu_supports_intel_sse2 and not (h.region_type and GF_REGION_NOSIMD)):
+      SET_FUNCTION(gf, multiply_region, w32, gf_w4_bytwo_b_sse_multiply_region)
+    else:
+      ## #endif
+      SET_FUNCTION(gf, multiply_region, w32, gf_w4_bytwo_b_nosse_multiply_region)
+      if bool(h.region_type and GF_REGION_SIMD):
+        return 0
+    ## #ifdef INTEL_SSE2
+  ## #endif
+  return 1
+
+proc gf_w4_log_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var ltd: ptr gf_logtable_data
+  var
+    i: cint
+    b: cint
+  h = cast[ptr gf_internal_t](gf.scratch)
+  ltd = h.log_g_table
+  i = 0
+  while i < GF_FIELD_SIZE:
+    ltd.log_tbl[i] = 0
+    inc(i)
+  echo (GF_FIELD_SIZE - 1)
+
+  #var N = cast[ptr uint8](c)
+  #ltd.antilog_tbl_div =  ltd.antilog_tbl[GF_FIELD_SIZE - 1] + (GF_FIELD_SIZE - 1)
+  ltd.antilog_tbl_div = cast[ptr uint8](ltd.antilog_tbl[GF_FIELD_SIZE - 1] + (GF_FIELD_SIZE - 1))
+  b = 1
+  i = 0
+  while true:
+    if ltd.log_tbl[b] != 0 and i != 0:
+      write(stderr, "Cannot construct log table: Polynomial is not primitive.\x0A\x0A")
+      return 0
+    ltd.log_tbl[b] = uint8(i)
+    ltd.antilog_tbl[i] = uint8(b)
+    ltd.antilog_tbl[i + GF_FIELD_SIZE - 1] = uint8(b)
+    b = b shl 1
+    inc(i)
+    if bool(b and GF_FIELD_SIZE):
+      b = b xor cint(h.prim_poly)
+
+    if not (b != 1): break
+  if i != GF_FIELD_SIZE - 1:
+    gf_errno = cint(GF_E_LOGPOLY)
+    return 0
+  SET_FUNCTION(gf, inverse, w32, gf_w4_inverse_from_divide)
+  SET_FUNCTION(gf, divide, w32, gf_w4_log_divide)
+  SET_FUNCTION(gf, multiply, w32, gf_w4_log_multiply)
+  SET_FUNCTION(gf, multiply_region, w32, gf_w4_log_multiply_region)
+  return 1
+
+proc gf_w4_shift_multiply*(gf: ptr gf_t; a: gf_val_32_t; b: gf_val_32_t): gf_val_32_t {.
+    inline, cdecl.} =
+  var
+    product: uint8
+    i: uint8
+    pp: uint8
+  var h: ptr gf_internal_t
+  h = cast[ptr gf_internal_t](gf.scratch)
+  pp = uint8(h.prim_poly)
+  product = 0
+  i = 0
+  while i < GF_FIELD_WIDTH:
+    if bool(int64(a) and (1 shl int32(i))):
+      product = uint8(uint8(product) xor (uint8(b) shl uint8(i)))
+      inc(i)
+
+  i = (GF_FIELD_WIDTH * 2 - 2)
+  while cint(i) >= cint(GF_FIELD_WIDTH):
+    if bool(int32(product) and (1 shl int32(i))):
+       product = product xor (pp shl (i - GF_FIELD_WIDTH))
+       dec(i)
+  return product
+
+proc gf_w4_double_table_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var std: ptr gf_double_table_data
+  var
+    a: cint
+    b: cint
+    c: cint
+    prod: cint
+    ab: cint
+  var mult: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
+  h = cast[ptr gf_internal_t](gf.scratch)
+  std = cast[ptr gf_double_table_data](h.private)
+  #bzero(mult, sizeof((uint8_t) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  #bzero(std.`div`, sizeof((uint8_t) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  a = 1
+  while a < GF_FIELD_SIZE:
+    b = 1
+    while b < GF_FIELD_SIZE:
+      prod = gf_w4_shift_multiply(gf, a, b)
+      mult[a][b] = prod
+      std.`div`[prod][b] = a
+      inc(b)
+    inc(a)
+  #bzero(std.mult,
+  #      sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  a = 0
+  while a < GF_FIELD_SIZE:
+    b = 0
+    while b < GF_FIELD_SIZE:
+      ab = mult[a][b]
+      c = 0
+      while c < GF_FIELD_SIZE:
+        std.mult[a][(b shl 4) or c] = ((ab shl 4) or mult[a][c])
+        inc(c)
+      inc(b)
+    inc(a)
+  SET_FUNCTION(gf, inverse, w32, nil)
+  SET_FUNCTION(gf, divide, w32, gf_w4_double_table_divide)
+  SET_FUNCTION(gf, multiply, w32, gf_w4_double_table_multiply)
+  SET_FUNCTION(gf, multiply_region, w32, gf_w4_double_table_multiply_region)
+  return 1
+
+
+proc gf_w4_table_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var rt: cint
+  var h: ptr gf_internal_t
+  h = cast[ptr gf_internal_t](gf.scratch)
+  rt = (h.region_type)
+  if h.mult_type == cint(GF_MULT_DEFAULT) and not bool(gf_cpu_supports_intel_ssse3 or gf_cpu_supports_arm_neon):
+    rt = rt or GF_REGION_DOUBLE_TABLE
+  if bool(rt and GF_REGION_DOUBLE_TABLE):
+    return gf_w4_double_table_init(gf)
+  elif rt and GF_REGION_QUAD_TABLE:
+    if rt and GF_REGION_LAZY:
+      return gf_w4_quad_table_lazy_init(gf)
+    else:
+      return gf_w4_quad_table_init(gf)
+  else:
+    return gf_w4_single_table_init(gf)
+  return 0
+
+
+proc gf_w4_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  h = cast[ptr gf_internal_t](gf.scratch)
+  if h.prim_poly == 0: h.prim_poly = 0x00000013
+  h.prim_poly = h.prim_poly or 0x00000010
+  SET_FUNCTION(gf, multiply, w32, nil)
+  SET_FUNCTION(gf, divide, w32, nil)
+  SET_FUNCTION(gf, inverse, w32, nil)
+  SET_FUNCTION(gf, multiply_region, w32, nil)
+  SET_FUNCTION(gf, extract_word, w32, gf_w4_extract_word)
+  case h.mult_type
+  of cint(GF_MULT_CARRY_FREE):
+    if gf_w4_cfm_init(gf) == 0: return 0
+  of cint(GF_MULT_SHIFT):
+    if gf_w4_shift_init(gf) == 0: return 0
+  of cint(GF_MULT_BYTWO_p), cint(GF_MULT_BYTWO_b):
+    if gf_w4_bytwo_init(gf) == 0: return 0
+  of cint(GF_MULT_LOG_TABLE):
+    if gf_w4_log_init(gf) == 0: return 0
+  of cint(GF_MULT_DEFAULT), cint(GF_MULT_TABLE):
+    if gf_w4_table_init(gf) == 0: return 0
+  else:
+    return 0
+  if h.divide_type == cint(GF_DIVIDE_EUCLID):
+    SET_FUNCTION(gf, divide, w32, gf_w4_divide_from_inverse)
+    SET_FUNCTION(gf, inverse, w32, gf_w4_euclid)
+  elif h.divide_type == cint(GF_DIVIDE_MATRIX):
+    SET_FUNCTION(gf, divide, w32, gf_w4_divide_from_inverse)
+    SET_FUNCTION(gf, inverse, w32, gf_w4_matrix)
+  if gf.divide.w32 == nil:
+    SET_FUNCTION(gf, divide, w32, gf_w4_divide_from_inverse)
+    if gf.inverse.w32 == nil: SET_FUNCTION(gf, inverse, w32, gf_w4_euclid)
+  if gf.inverse.w32 == nil:
+    SET_FUNCTION(gf, inverse, w32, gf_w4_inverse_from_divide)
+  if h.region_type == GF_REGION_CAUCHY:
+    SET_FUNCTION(gf, multiply_region, w32, gf_wgen_cauchy_region)
+    SET_FUNCTION(gf, extract_word, w32, gf_wgen_extract_word)
+  if gf.multiply_region.w32 == nil:
+    SET_FUNCTION(gf, multiply_region, w32, gf_w4_multiply_region_from_single)
+  return 1
+
+
+proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: var cint;
+                  divide_type: var cint; prim_poly: uint64; arg1: var cint; arg2: var cint;
                   base_gf: ptr gf_t; scratch_memory: pointer): cint {.cdecl.} =
   var sz: cint
   var h: ptr gf_internal_t
   #gf_cpu_identify()
 
-  if gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, prim_poly,
-                   base_gf) == 0:
+  if true: #gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, prim_poly, base_gf) == 0:
     return 0
-  sz = gf_scratch_size(w, mult_type, region_type, divide_type, arg1, arg2)
+  sz = 3 #gf_scratch_size(w, mult_type, region_type, divide_type, arg1, arg2)
   if sz <= 0:
     return 0
   if scratch_memory == nil:
-    h = cast[ptr gf_internal_t](malloc(sz))
+    h = cast[ptr gf_internal_t](sizeof(sz))
     h.free_me = 1
   else:
-    h = scratch_memory
+    h = cast[ptr gf_internal_t](sizeof(sz))
     h.free_me = 0
+
   gf.scratch = cast[pointer](h)
   h.mult_type = mult_type
   h.region_type = region_type
@@ -889,7 +1132,8 @@ proc gf_init_hard*(gf: ptr gf_t; w: cint; mult_type: cint; region_type: cint;
   h.arg2 = arg2
   h.base_gf = base_gf
   h.private = cast[pointer](gf.scratch)
-  h.private = cast[ptr uint8_t](h.private) + (sizeof((gf_internal_t)))
+  h.private = cast[ptr uint8](sizeof(h.private)  + int32(sizeof(gf_internal_t)))
+  #cast[ptr uint8](sizeof(h.private)) #int32((sizeof((gf_internal_t))))
   gf.extract_word.w32 = nil
   case w
   of 4:
