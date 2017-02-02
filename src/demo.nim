@@ -31,9 +31,9 @@ type
   gf_val_64_t* = uint64
   gf_val_128_t* = ptr uint64
 
-proc gf_w4_shift_multiply*(bb: var cint; a: gf_val_32_t; b: gf_val_32_t): cint  =
+proc gf_w4_shift_multiply*(bb: var cint; a: gf_val_32_t; b: gf_val_32_t): gf_val_32_t  =
     #cho "Welcome"
-    return bb
+    return cast[gf_val_32_t](bb)
 
 var
     a: cint
@@ -42,10 +42,26 @@ var
     prod: cint
     ab: cint
 
+const
+  GF_FIELD_WIDTH* = 4
+  GF_DOUBLE_WIDTH* = (GF_FIELD_WIDTH * 2)
+  GF_FIELD_SIZE* = (1 shl GF_FIELD_WIDTH)
+  GF_MULT_GROUP_SIZE* = (GF_FIELD_SIZE - 1)
 
+
+type
+  gf_single_table_data* = object
+    mult*: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
+    `div`*: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
+
+#var std: ptr gf_single_table_data
+#std = cast[ptr gf_single_table_data](h.private)
+
+#echo gf_single_table_data.mult
+#zeroMem(std.mult, sizeof(uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE)
 #var new = cast[gf_val_32_t](bc)
 #echo new
-echo gf_w4_shift_multiply(c, cast[gf_val_32_t](a), cast[gf_val_32_t](bc))
+#echo gf_w4_shift_multiply(c, cast[gf_val_32_t](a), cast[gf_val_32_t](bc))
 #var xxy = int(1.0 / 3) # type conversion
 
 #var y = "Foobar"

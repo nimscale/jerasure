@@ -36,105 +36,8 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
-import errors, typedefinitions, galiosproc
-
-var gf_errno*: cint
-
-const
-  MAX_GF_INSTANCES* = 64
-const
-  ENOMEM* = 12
-const
-    EINVAL* = 22
-
-type
-  gf_val_32_t* = uint32
-  gf_val_64_t* = uint64
-  gf_val_128_t* = ptr uint64
-
-type
-  GFP* = object
-    gf:int
-
-type
-  gf_region* = object
-    w32*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_32_t; bytes: cint;add: cint)
-    w64*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_64_t; bytes: cint;add: cint)
-    w128*: proc (gf: GFP; src: pointer; dest: pointer; val: gf_val_128_t; bytes: cint;add: cint)
-
-type
-   gf_extract* = object
-      w32*: proc (gf: GFP; start: pointer; bytes: cint; index: cint): gf_val_32_t
-      w64*: proc (gf: GFP; start: pointer; bytes: cint; index: cint): gf_val_64_t
-      w128*: proc (gf: GFP; start: pointer; bytes: cint; index: cint; rv: gf_val_128_t)
-
-type
-  gf_func_a* = object
-    w32*: proc (gf: GFP; a: gf_val_32_t): gf_val_32_t
-    w64*: proc (gf: GFP; a: gf_val_64_t): gf_val_64_t
-    w128*: proc (gf: GFP; a: gf_val_128_t; b: gf_val_128_t)
-
-type
-  gf_func_a_b* = object
-    w32*: proc (gf: GFP; a: gf_val_32_t; b: gf_val_32_t): gf_val_32_t
-    w64*: proc (gf: GFP; a: gf_val_64_t; b: gf_val_64_t): gf_val_64_t
-    w128*: proc (gf: GFP; a: gf_val_128_t; b: gf_val_128_t; c: gf_val_128_t)
-# Template definistions follows
-template SET_FUNCTION*(gf, `method`, size, `func`: untyped): void =
-  nil
-
-#gf.`method`.size = (`func`)
-#(cast[ptr gf_internal_t]((gf).scratch)).`method` = `func`
-#template SET_FUNCTION*(gf, `method`, size, `func`: untyped): void =
-#  nil
-
-#(gf).`method`.size = (`func`)
-
-type
-  gf_t* = object
-      multiply*: gf_func_a_b
-      divide*: gf_func_a_b
-      inverse*: gf_func_a
-      multiply_region*: gf_region
-      extract_word*: gf_extract
-      scratch*: pointer
-
-var gfp_array* : array[MAX_GF_INSTANCES, ptr gf_t]
-
-type
-  gf_internal_t* = object
-    mult_type*: cint
-    region_type*: cint
-    divide_type*: cint
-    w*: cint
-    prim_poly*: uint64
-    free_me*: cint
-    arg1*: cint
-    arg2*: cint
-    base_gf*: ptr gf_t
-    private*: pointer
-    log_g_table*: ptr gf_logtable_data
-
-## The following were got from gf_complete.h
-const
-  GF_REGION_DEFAULT* = (0x00000000)
-  GF_REGION_DOUBLE_TABLE* = (0x00000001)
-  GF_REGION_QUAD_TABLE* = (0x00000002)
-  GF_REGION_LAZY* = (0x00000004)
-  GF_REGION_SIMD* = (0x00000008)
-  GF_REGION_SSE* = (0x00000008)
-  GF_REGION_NOSIMD* = (0x00000010)
-  GF_REGION_NOSSE* = (0x00000010)
-  GF_REGION_ALTMAP* = (0x00000020)
-  GF_REGION_CAUCHY* = (0x00000040)
-
-var mult_type, divide_type, region_type, gf_divide_matrix, gf_divide_euclid: int
-
-type
-  gf_division_type_t* {.size: sizeof(cint).} = enum
-    GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID
-
-#var GF_DIVIDE_DEFAULT, GF_DIVIDE_MATRIX, GF_DIVIDE_EUCLID: cint
+import errors, typedefinitions, gf_definitions, gf_galois_constants
+import gf_legacy
 
 proc gf_composite_get_default_poly*(base: ptr gf_t): uint64 {.cdecl.} =
   var h: ptr gf_internal_t
@@ -1108,30 +1011,33 @@ proc gf_w4_quad_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   std = cast[ptr gf_quad_table_data](h.private)
   #bzero(mult, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
   #bzero(std.`div`, sizeof((uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE))
+  #zeroMem
   a = 1
   while a < GF_FIELD_SIZE:
     b = 1
     while b < GF_FIELD_SIZE:
-      prod = gf_w4_shift_multiply(gf, a, b)
-      mult[a][b] = prod
-      std.`div`[prod][b] = a
+      #prod = gf_w4_shift_multiply(gf, cast[gf_val_32_t](a), cast[gf_val_32_t](b))
+      prod = cast[cint](gf_w4_shift_multiply(gf, cast[gf_val_32_t](a), cast[gf_val_32_t](b)))
+
+      mult[a][b] = cast[uint8](prod)
+      std.`div`[prod][b] = cast[uint8](a)
       inc(b)
     inc(a)
   val = 0
   while val < 16:
     a = 0
     while a < 16:
-      va = (mult[val][a] shl 12)
+      va = cast[cint]((mult[val][a] shl 12))
       b = 0
       while b < 16:
-        vb = (mult[val][b] shl 8)
+        vb = cast[cint]((mult[val][b] shl 8))
         c = 0
         while c < 16:
-          vc = (mult[val][c] shl 4)
+          vc = cast[cint]((mult[val][c] shl 4))
           d = 0
           while d < 16:
-            vd = mult[val][d]
-            std.mult[val][(a shl 12) or (b shl 8) or (c shl 4) or d] = (va or vb or vc or vd)
+            vd = cast[cint](mult[val][d])
+            std.mult[val] [(a shl 12)  or (b shl 8) or (c shl 4) or d] = cast[uint16](va or vb or vc or vd)
             inc(d)
           inc(c)
         inc(b)
@@ -1142,6 +1048,78 @@ proc gf_w4_quad_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   SET_FUNCTION(gf, multiply, w32, gf_w4_quad_table_multiply)
   SET_FUNCTION(gf, multiply_region, w32, gf_w4_quad_table_multiply_region)
   return 1
+
+proc gf_w4_single_table_multiply_region_neon*(gf: ptr gf_t; src: pointer; dest: pointer; val: gf_val_32_t; bytes: cint; `xor`: cint) {.cdecl.} =
+  var rd: gf_region_data
+
+  var
+    sptr: ptr uint8
+    dptr: ptr uint8
+    top: ptr uint8
+  if val == 0:
+    gf_multby_zero(dest, bytes, `xor`)
+    return
+  if val == 1:
+    gf_multby_one(src, dest, bytes, `xor`)
+    return
+
+  gf_set_region_data(addr(rd), gf, src, dest, bytes, val, `xor`, 16)
+  gf_do_initial_region_alignment(addr(rd))
+  sptr = rd.s_start
+  dptr = rd.d_start
+  top = rd.d_top
+  if `xor`: w4_single_table_multiply_region_neon(gf, sptr, dptr, top, val, 1)
+  else: w4_single_table_multiply_region_neon(gf, sptr, dptr, top, val, 0)
+  gf_do_final_region_alignment(addr(rd))
+
+
+proc gf_w4_neon_single_table_init*(gf: ptr gf_t) {.cdecl.} =
+  gf.multiply_region.w32 = gf_w4_single_table_multiply_region_neon
+
+
+proc gf_w4_single_table_init*(gf: ptr gf_t): cint {.cdecl.} =
+  var h: ptr gf_internal_t
+  var std: ptr gf_single_table_data
+
+  var
+    a: cint
+    b: cint
+    prod: cint
+  h = cast[ptr gf_internal_t](gf.scratch)
+  std = cast[ptr gf_single_table_data](h.private)
+
+  zeroMem(addr std.mult[0], sizeof(uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE)
+  zeroMem(addr std.`div`[0], sizeof(uint8) * GF_FIELD_SIZE * GF_FIELD_SIZE)
+
+  a = 1
+  while a < GF_FIELD_SIZE:
+    b = 1
+    while b < GF_FIELD_SIZE:
+      prod = cast[cint](gf_w4_shift_multiply(gf, cast[gf_val_32_t](a), cast[gf_val_32_t](b)))
+      std.mult[a][b] = cast[uint8](prod)
+      std.`div`[prod][b] = cast[uint8](a)
+      inc(b)
+    inc(a)
+  SET_FUNCTION(gf, inverse, w32, nil)
+  SET_FUNCTION(gf, divide, w32, gf_w4_single_table_divide)
+  SET_FUNCTION(gf, multiply, w32, gf_w4_single_table_multiply)
+  ## #if defined(INTEL_SSSE3)
+
+  if bool(gf_cpu_supports_intel_ssse3 and not (h.region_type and (GF_REGION_NOSIMD or GF_REGION_CAUCHY))):
+    SET_FUNCTION(gf, multiply_region, w32, gf_w4_single_table_sse_multiply_region)
+  else:
+    ## #elif defined(ARM_NEON)
+    if bool(gf_cpu_supports_arm_neon and not (h.region_type and (GF_REGION_NOSIMD or GF_REGION_CAUCHY))):
+      gf_w4_neon_single_table_init(gf)
+  ## else {
+  ## #endif
+  ##     SET_FUNCTION(gf,multiply_region,w32,gf_w4_single_table_multiply_region);
+  ##     if (h->region_type & GF_REGION_SIMD) return 0;
+  ## #if defined(INTEL_SSSE3) || defined(ARM_NEON);
+  ## }
+  ## #endif
+  return 1
+
 
 proc gf_w4_table_init*(gf: ptr gf_t): cint {.cdecl.} =
   var rt: cint
