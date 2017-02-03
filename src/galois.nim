@@ -48,23 +48,23 @@ proc galois_init_default_field*(w: cint): cint =
    if gfp_array[w] == nil:
       return ENOMEM
 
-   echo gf_init_easy(gfp_array[w], w)
+   #echo gf_init_easy(gfp_array[w], w)
    if not cast[bool](gf_init_easy(gfp_array[w], w)):
       return EINVAL
 
    return 0
 
-proc galois_uninit_field*(w: cint): cint = #{.cdecl, importc: "galois_uninit_field", dynlib: gf_complete.}
-  var ret: cint
-  if gfp_array[w] != nil:
-    var recursive: cint
+#proc galois_uninit_field*(w: cint): cint = #{.cdecl, importc: "galois_uninit_field", dynlib: gf_complete.}
+#  var ret: cint
+#  if gfp_array[w] != nil:
+#    var recursive: cint
 
-    ret = gf_free(gfp_array[w], recursive)
-    free(gfp_array[w])
-    gfp_array[w] = nil
+#    ret = gf_free(gfp_array[w], recursive)
+#    free(gfp_array[w])
+#    gfp_array[w] = nil
 
-  return ret
+#  return ret
 
-var d: cint = 1
-echo galois_init_default_field(d)
+#var d: cint = 1
+#echo galois_init_default_field(d)
 
