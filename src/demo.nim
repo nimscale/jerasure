@@ -5,8 +5,11 @@
 
 var c: cint = 12
 var b: cint = 23
-var x: cint = 123
+var x: culong = 123
 var xx: cint = 33
+
+
+dec(xx, cast[int](x))
 
 ##cauchy_n_ones(c, b)
 
