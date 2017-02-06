@@ -1,4 +1,4 @@
-import gf_typedef
+import gf_typedef, gf_cpu
 
 proc gf_init_easy*(gf: ptr gf_t; w: cint): cint {.cdecl.} =
   return w
@@ -15,4 +15,4 @@ proc gf_init_easy*(gf: ptr gf_t; w: cint): cint {.cdecl.} =
 #  if h.free_me: free(h)
 #  return 0
 
-  
+

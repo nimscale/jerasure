@@ -1,32 +1,17 @@
-import galois
-
+import galois, gf_typedef
+import gf_error
 
 var tmp: cint = 12
-
+var w: cint  = 12
+var mult_type: cint =2
+var region_type: cint = 3
+var divide_type: cint = 4
+var arg1: cint = 43
+var arg2: cint = 4
 #echo galois_init_default_field(tmp)
 
 #echo hostCPU
 
-var arc_x86: bool = false
-var arc_x64: bool = false
-var arc_xUnknown: bool = false
-var arc_x86_x64: bool = false
-
-if hostCPU == "amd64":
-  arc_x64 = true
-
-elif hostCPU == "i386":
-  arc_x86 = true
-else:
-  arc_xUnknown = true
-
-if arc_x64 or arc_x86:
-   const
-      arc_x86_64* =true
-
-else:
-   echo "There is no hope for the arch to work@"
-
-when defined(arc_x86_64):
-    echo "it's a welcome!"
-   
+#(w: cint; mult_type: cint; region_type: cint; divide_type: cint; arg1: cint; arg2: cint; poly: uint64; base: ptr gf_t): cint
+echo gf_error_check(w, mult_type, region_type, divide_type, arg1, arg2, 0, nil)
+echo err_gf_errno
