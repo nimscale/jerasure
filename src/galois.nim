@@ -48,7 +48,7 @@ proc galois_init_default_field*(w: cint): cint =
    if gfp_array[w] == nil:
       return ENOMEM
 
-   #echo gf_init_easy(gfp_array[w], w)
+   echo gf_init_easy(gfp_array[w], w)
    if not cast[bool](gf_init_easy(gfp_array[w], w)):
       return EINVAL
 
