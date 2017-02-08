@@ -36,35 +36,47 @@
 ##  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##  POSSIBILITY OF SUCH DAMAGE.
 ##
-
-import gf_typedef, gf_proc
+import gf_typedef
 import strutils
 
-proc galois_init_default_field*(w: cint): cint =
+proc galois_init_default_field*(w: cint): cint {.cdecl, importc: "galois_init_default_field", dynlib: "gf_complete.h".} =
+    if gfp_array[w] == nil:
+        gfp_array[w] = cast[ptr gf_t](malloc(sizeof((gf_t))))
 
-   if gfp_array[w] == nil:
-      gfp_array[w] = cast[ptr gf_t](alloc(sizeof((gf_t))))
+    if gfp_array[w] == nil:
+        return ENOMEM
+    if not gf_init_easy(gfp_array[w], w):
+        return EINVAL
+    return 0
 
-   if gfp_array[w] == nil:
-      return ENOMEM
+proc galois_uninit_field*(w: cint): cint {.cdecl, importc: "galois_uninit_field", dynlib: "gf_complete.h".} =
+    var ret* {.importc: "ret", dynlib: gf_complete.h.}: cint
 
-   echo gf_init_easy(gfp_array[w], w)
-   if not cast[bool](gf_init_easy(gfp_array[w], w)):
-      return EINVAL
+    if gfp_array[w] != nil:
+      var recursive: cint
+      ret = gf_free(gfp_array[w], recursive)
+      free(gfp_array[w])
+      gfp_array[w] = nil
+    return ret
 
-   return 0
+proc galois_change_technique*(gf: ptr gf_t; w: cint) {.cdecl,importc: "galois_change_technique", dynlib: "gf_complete.h".} =
+    if w <= 0 or w > 32:
+        fprintf(stderr, "ERROR -- cannot support Galois field for w=%d\x0A", w)
+        assert(0)
+    if not is_valid_gf(gf, w):
+        fprintf(stderr, "ERROR -- overriding with invalid Galois field for w=%d\x0A",w)
+        assert(0)
+    if gfp_array[w] != nil:
+      gf_free(gfp_array[w], gfp_is_composite[w])
 
-#proc galois_uninit_field*(w: cint): cint = #{.cdecl, importc: "galois_uninit_field", dynlib: gf_complete.}
-#  var ret: cint
-#  if gfp_array[w] != nil:
-#    var recursive: cint
+    gfp_array[w] = gf
 
-#    ret = gf_free(gfp_array[w], recursive)
-#    free(gfp_array[w])
-#    gfp_array[w] = nil
-
-#  return ret
-
-#var d: cint = 1
-#echo galois_init_default_field(d)
-
+proc galois_single_multiply*(a: cint; b: cint; w: cint): cint {.cdecl,importc: "galois_single_multiply", dynlib: "gf_complete.h".} =
+    if x == 0 or y == 0: return 0
+    if gfp_array[w] == nil:
+      galois_init(w)
+    if w <= 32:
+      return gfp_array[w].multiply.w32(gfp_array[w], x, y)
+    else:
+      fprintf(stderr, "ERROR -- Galois field not implemented for w=%d\x0A", w)
+      return 0

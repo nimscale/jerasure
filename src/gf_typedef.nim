@@ -59,6 +59,7 @@ var g_gf_errno*: cint
 type
   GFP* = object
     gf:int
+
 type
   #GFP* = ptr gf
 
