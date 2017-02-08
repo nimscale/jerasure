@@ -319,4 +319,114 @@ type
     smult*: array[GF_FIELD_SIZE, array[GF_FIELD_SIZE, uint8]]
     mult*: array[GF_FIELD_SIZE * GF_FIELD_SIZE, uint16]
 
+type
+  gf_w8_bytwo_data* = object
+    prim_poly*: uint64
+    mask1*: uint64
+    mask2*: uint64
+
+type
+  gf_w8_half_table_data* = object
+    high*: array[GF_FIELD_SIZE, array[GF_HALF_SIZE, uint8]]
+    low*: array[GF_FIELD_SIZE, array[GF_HALF_SIZE, uint8]]
+
+type
+  gf_w8_logtable_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, uint8]
+    antilog_tbl*: array[GF_FIELD_SIZE * 2, uint8]
+    inv_tbl*: array[GF_FIELD_SIZE, uint8]
+
+type
+  gf_w8_logzero_small_table_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, cshort] ##  Make this signed, so that we can divide easily
+    antilog_tbl*: array[255 * 3, uint8]
+    inv_tbl*: array[GF_FIELD_SIZE, uint8]
+    div_tbl*: ptr uint8
+
+type
+  gf_w8_logzero_table_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, cshort] ##  Make this signed, so that we can divide easily
+    antilog_tbl*: array[512 + 512 + 1, uint8]
+    div_tbl*: ptr uint8
+    inv_tbl*: ptr uint8
+
+type
+  gf_w8_composite_data* = object
+    mult_table*: ptr uint8
+
+
+# This type object are for "gf_w16_scratch_size" proc
+type
+  gf_w16_logtable_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, uint16]
+    antilog_tbl*: array[GF_FIELD_SIZE * 2, uint16]
+    inv_tbl*: array[GF_FIELD_SIZE, uint16]
+    d_antilog*: ptr uint16
+
+  gf_w16_zero_logtable_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, cint]
+    a_antilog_tbl*: array[GF_FIELD_SIZE * 4, uint16]
+    antilog_tbl*: ptr uint16
+    inv_tbl*: array[GF_FIELD_SIZE, uint16]
+
+  gf_w16_lazytable_data* = object
+    log_tbl*: array[GF_FIELD_SIZE, uint16]
+    antilog_tbl*: array[GF_FIELD_SIZE * 2, uint16]
+    inv_tbl*: array[GF_FIELD_SIZE, uint16]
+    d_antilog*: ptr uint16
+    lazytable*: array[GF_FIELD_SIZE, uint16]
+
+  gf_w16_bytwo_data* = object
+    prim_poly*: uint64
+    mask1*: uint64
+    mask2*: uint64
+
+  gf_w16_split_8_8_data* = object
+    tables*: array[3, array[256, array[256, uint16]]]
+
+  gf_w16_group_4_4_data* = object
+    reduce*: array[16, uint16]
+    shift*: array[16, uint16]
+
+  gf_w16_composite_data* = object
+    mult_table*: ptr uint8
+
+type
+  gf_split_2_32_lazy_data* = object
+    tables*: array[16, array[4, uint32]]
+    last_value*: uint32
+
+  gf_w32_split_8_8_data* = object
+    tables*: array[7, array[256, array[256, uint32]]]
+    region_tables*: array[4, array[256, uint32]]
+    last_value*: uint32
+
+  gf_w32_group_data* = object
+    reduce*: ptr uint32
+    shift*: ptr uint32
+    tshift*: cint
+    rmask*: uint64
+    memory*: ptr uint32
+
+  gf_split_16_32_lazy_data* = object
+    tables*: array[2, array[(1 shl 16), uint32]]
+    last_value*: uint32
+
+  gf_split_8_32_lazy_data* = object
+    tables*: array[4, array[256, uint32]]
+    last_value*: uint32
+
+  gf_split_4_32_lazy_data* = object
+    tables*: array[8, array[16, uint32]]
+    last_value*: uint32
+
+  gf_w32_bytwo_data* = object
+    prim_poly*: uint64
+    mask1*: uint64
+    mask2*: uint64
+
+  gf_w32_composite_data* = object
+    log*: ptr uint16
+    alog*: ptr uint16
+
 
