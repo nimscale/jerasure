@@ -25,5 +25,4 @@ proc main(x: varargs[int]) =
 
   jerasure_print_matrix(matrix, r, c, w);
 
-
 main()
