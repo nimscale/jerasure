@@ -61,6 +61,7 @@ proc get_jerasure_header_files(lib_path: string, header_f:string): string =
                 if h_file.endsWith(header_f):
                     return h_file
 
-#echo get_jerasure_sharedlib(SHARED_LIB_PATH)
-#echo get_gfcomplete_sharedlib(SHARED_LIB_PATH)
-#echo get_jerasure_header_files(HEADER_PATH, "galois.h")
+when isMainModule:
+    echo get_jerasure_sharedlib(SHARED_LIB_PATH)
+    echo get_gfcomplete_sharedlib(SHARED_LIB_PATH)
+    echo get_jerasure_header_files(HEADER_PATH, "galois.h")
