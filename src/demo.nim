@@ -1,14 +1,3 @@
-template talloc*(`type`, num: untyped): untyped =
-  cast[ptr `type`](alloc(sizeof(`type`) * (num)))
+import sharedlib
 
-var
-    r: cint = 12
-    c: cint = 100
-    w: cint = 12
-    i: cint
-
-var matrix: ptr cint
-
-matrix = talloc(int32, r*c)
-
-matrix[1] = 12
+echo SHARED_LIB_PATH #get_jerasure_sharedlib(SHARED_LIB_PATH)

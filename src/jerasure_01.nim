@@ -19,10 +19,10 @@ proc main(x: varargs[int]) =
   i = 0
 
   while i < r * c:
-    matrix[i] = n
+    #matrix[i] = n
     n = galois_single_multiply(n, 2, w)
     inc(i)
 
-  jerasure_print_matrix(matrix, r, c, w);
+  jerasure_print_bitmatrix(matrix, r, c, w);
 
 main()
