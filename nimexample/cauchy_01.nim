@@ -1,19 +1,33 @@
-import ../src/jerasure
+import ../src/jerasure, ../src/cauchy
 # Demostrating cauchy.
 # We could use the commandline options here
 
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 proc fprintf(formatstr: cstring) {.header: "<stdio.h>", importc: "fprintf", varargs.}
 
+
+# Needed for pointer arithmetics
+var a: ptr int16
+var t = @[1.int16, 2.int16, 3.int16]
+
+proc `+`[T](a: ptr T, b: int): ptr T =
+    if b >= 0:
+        cast[ptr T](cast[uint](a) + cast[uint](b * a[].sizeof))
+    else:
+        cast[ptr T](cast[uint](a) - cast[uint](-1 * b * a[].sizeof))
+
+template `-`[T](a: ptr T, b: int): ptr T = `+`(a, -b)
+
 proc caunch_01(argc:cint, n_n:cint, w_w:cint):cint =
     # Proc caunch 01.
     # NOTE: This is where the commandline option would
     # work.
+
     var no:cint
     var i:cint
     var bitmatrix: ptr cint
-    var w:cint = 24
-    var n:cint = 12
+    var w:cint = 12
+    var n:cint = 6
 
     if ( w == 31):
         if cast[bool](n and 0x80000000):
@@ -37,21 +51,23 @@ proc caunch_01(argc:cint, n_n:cint, w_w:cint):cint =
 
     i = 0
     while i < w * w:
-      inc(no, bitmatrix[i])
+      #(matrix[].addr + i)[]
+      #inc(no, bitmatrix[i])
+      inc(no, (bitmatrix[].addr + i)[])
       inc(i)
 
 
     if no != cauchy_n_ones(n, w):
-        fprintf(stderr, "Jerasure error: # ones in the bitmatrix (%d) doesn\'t match cauchy_n_ones() (%d).\x0A",
-                no, cauchy_n_ones(n, w))
-        exit(1)
+        echo "Jerasure error: # ones in the bitmatrix (%d) doesn\'t match cauchy_n_ones() (%d).\x0A", no, cauchy_n_ones(n, w)
+        quit(1)
 
     printf("# Ones: %d\x0A", cauchy_n_ones(n, w))
 
     return 0
 
 
-var n_n:cint = 12
-var w_w:cint = 24
+when isMainModule:
+    var n_n:cint = 12
+    var w_w:cint = 24
 
-discard caunch_01(0, n_n, w_w);
+    discard caunch_01(0, n_n, w_w);

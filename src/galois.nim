@@ -1,8 +1,8 @@
 import gf_typedef
 
 
-{.link:"/usr/local/lib/libgf_complete.so.1.0.0"}
-{.link:"/usr/local/lib/libJerasure.so.2.0.0"}
+#{.link:"/usr/local/lib/libgf_complete.so.1.0.0"}
+#{.link:"/usr/local/lib/libJerasure.so.2.0.0"}
 proc galois_init_default_field*(w: cint): cint {.importc.}
 
 proc galois_uninit_field*(w: cint): cint {.importc.}
