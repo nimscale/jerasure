@@ -5,18 +5,12 @@
 # NOTE: Decided to maintain the developer comments on each proc or funtion
 # bellow, this helps in maintaining the same status with the original binding.
 
-import os, osproc, strutils
+import os, osproc, strutils, templates
 
 # This printf was needed because there where some methods that
 # needed them and there was no way I found for the nim's echo
 # to go with it.
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
-
-
-# talloc is a hierarchical, reference counted memory pool system with destructors
-# many proc or funtions needed. Mostly those printing matixs
-template talloc*(`type`, num: untyped): untyped =
-  cast[ptr `type`](alloc(sizeof(`type`) * (num)))
 
 # We need to maintain a pull or shared library where the jerasure headers reside.
 const
