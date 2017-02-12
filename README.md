@@ -33,5 +33,5 @@ As for debian  everything is okay it makes sharedlibrary available by default.
 
 ### Include directory ###
 This include directory contains the emergency c header files needed by the project, incase
-we wind a problem with the shared library for jerasure will need to compile everything for
+we find a problem with the shared library for jerasure will need to compile everything for
 our self from the include directory.
