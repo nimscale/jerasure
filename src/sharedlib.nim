@@ -17,7 +17,7 @@
 
 # sharedlib.nim
 # This file contains paths to linux shared libraries
-# that re required by jerasure.h
+# that are required by jerasure.h
 import os, osproc, strutils
 
 const
