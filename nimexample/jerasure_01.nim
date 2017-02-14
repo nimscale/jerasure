@@ -44,5 +44,3 @@ proc main(x: varargs[int]) =
   jerasure_print_bitmatrix(matrix, r, c, w);
 
 main()
-
-

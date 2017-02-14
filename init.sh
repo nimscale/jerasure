@@ -10,15 +10,13 @@
 
 WORKING_DIR=$(pwd)
 SHARED_LIB_PATH="/usr/local/lib"
+yes="yes"
+no="no"
 
-if [ "$LD_LIBRARY_PATH" = "" ]
-then
-    printf "Missing Shared Library Enviroment variable Attempting to export sharedlibrary directory.\n\n"
-    export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-    
-else
-    printf "Found shared library path at $LD_LIBRARY_PATH\n"
-fi
+y="y"
+n="n"
+
+JERASURE_DIR='/usr/local/include/jerasures'
 
 
 function bash_instruction(){
@@ -29,7 +27,6 @@ function bash_instruction(){
     echo "<gf_complete.h> and <jerasure.h> and then adding them,"
     echo "in the include directory for them to be compiled during, project build."
 }
-
 
 # Begin dependency configurations
 function dependency_config(){
@@ -46,13 +43,65 @@ function dependency_config(){
     else
         echo "No jerasure shared library found."
         
-        # Get user input for download
-        echo "We can download the c header files required by the project, instead of using shared library."
-        echo "Would you like us to download required library for you (yes/no)?"
+        COMMAND="sudo apt-get install libjerasure-dev -y"
+        echo "Do you want to install libjerasure-dev (yes/y. no/n)"
         
         read yes_no
+        
+        if [ $yes_no = $yes ]
+        then
+            # Script must run as root
+            if [ $EUID -eq 0 ]
+            then
+                $COMMAND
+            else
+                echo "Your not running as root! Please input your password."
+                read -s PASSWD
+                
+                APT_CMD="echo $PASSWD | sudo -S $COMMAND"
+                
+                eval $APT_CMD
+            fi
+            
+        elif [ $yes_no = $no ]
+        then
+            exit 
+        
+        elif [ $yes_no = $n ]
+        then
+            exit 
+            
+        elif [ $yes_no = $y ]
+        then
+            # Script must run as root
+            if [ $EUID -eq 0 ]
+            then
+                $COMMAND
+            else
+                echo "Your not running as root! Please input your password."
+                read -s PASSWD
+                
+                APT_CMD="echo $PASSWD | sudo -S $COMMAND"
+                
+                eval $APT_CMD
+            fi
+        else
+            exit 
+        fi
+            
     fi
-    
 }
 
-dependency_config
+if [ -d $JERASURE_DIR ]
+then
+    echo -e "Looks like you have jerasure already installed. If there is any problem with jerasure.nim,"
+    echo -e "Please try uninstalling libjerasure-dev and re-installing again!"
+else
+    if [ "$LD_LIBRARY_PATH" = "" ]
+    then
+        printf "Missing Shared Library Enviroment variable Attempting to export sharedlibrary directory.\n\n"
+        export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+    fi
+    
+    dependency_config
+fi
