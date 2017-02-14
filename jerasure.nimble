@@ -4,6 +4,7 @@ version       = "0.1.0"
 author        = "Wangolo Joel"
 description   = "Nim bindings for jerasure, a library in C that supports erasure coding in storage applications."
 license       = "Apache License"
+srcDir = "src"
 
 # Dependencies
 
