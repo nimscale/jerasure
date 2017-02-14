@@ -6,6 +6,7 @@
 # bellow, this helps in maintaining the same status with the original binding.
 
 import os, osproc, strutils, templates
+import mysqlls
 
 # This printf was needed because there where some methods that
 # needed them and there was no way I found for the nim's echo

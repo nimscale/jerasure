@@ -1,4 +1,6 @@
-import ../src/jerasure, ../src/galois
+#import jerasure
+include "jerasure.nim"
+include "galois.nim"
 
 template talloc*(`type`, num: untyped): untyped =
   cast[ptr `type`](alloc(sizeof(`type`) * (num)))
