@@ -38,6 +38,8 @@ function dependency_config(){
         do
             printf "$SHARED_LIB_PATH/$lib\n"
         done 
+        echo
+        echo "Now run the script with install command!"
         
     else
         echo "No jerasure shared library found."
@@ -119,9 +121,59 @@ then
         
     else
         echo "Directory $NIM_LIB_DIR not found have you installed nim?"
+        echo ""
+        sleep 2 # A little nap won't hurt
+        
+        if [ $EUID -eq 0 ]
+        then
+            echo "Give us nim path or of leave blank:"
+            read nim_path
+            y_n=""
+            
+            if [ -z "${nim_path// }"  ]
+            then                
+                echo "Creating directory $NIM_LIB_DIR"
+                mkdir_cmd="mkdir -p $NIM_LIB_DIR"
+                
+                # Run the command to create directory
+                $mkdir_cmd
+                
+                CP_CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
+                
+                # Run the command to move files
+                echo "Created directory $LIB_NIM_DIR copying jerasure binding"
+                $CP_CMD
+                sleep 1 # Rest user eyes!
+                
+                if [ $? -eq 0 ]
+                then
+                    echo "Successful"
+                else
+                    echo "Unsuccessful command executed!"
+                fi
+            else
+                CP_CMD="cp -rf $WORKING_DIR $nim_path"
+                
+                echo "Installing library to $nim_path"
+                $CP_CMD
+                if [ $? -eq 0 ]
+                then
+                    echo "Successful"
+                else
+                    echo "Unsuccessful command executed!"
+                fi
+                
+            fi # End attempt to get user nim path
+            
+        else
+            echo "Could not create the directory $LIB_NIM_DIR"
+            echo "Your not root! the next action required root previledges!"
+        fi
+        
     fi
     
 elif [ "$1" = "purge" ]
+then
     NIM_LIB_DIR="/usr/lib/nim"
 
     package="jerasure"
@@ -143,9 +195,7 @@ elif [ "$1" = "purge" ]
     else
         echo "Directory $NIM_LIB_DIR not found have you installed nim?"
     fi
-    
-then
-    echo "purging directory!"
+        
 elif [ "$1" = "depends" ]
 then
     if [ -d $JERASURE_DIR ]
@@ -156,6 +206,7 @@ then
         if [ "$LD_LIBRARY_PATH" = "" ]
         then
             printf "Missing Shared Library Enviroment variable Attempting to export shared library directory.\n\n"
+            sleep 1
             export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
         fi
         
