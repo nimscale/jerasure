@@ -114,7 +114,27 @@ then
         then
             
             echo "Copying dev files $WORKING_DIR to $NIM_LIB_DIR"
-            $CMD
+            
+            if [[ $WORKING_DIR == *"-master"* ]]
+            then
+                echo "You got from github"
+                # Just create the jerasure folder in
+                JDIR="$NIM_LIB_DIR/jerasure"
+                
+                create_dir="mkdir -p $JDIR"
+                
+                $create_dir
+                
+                CMD="cp -rf $WORKING_DIR/* $JDIR"
+                echo "We are working on it"
+                # Run the command
+                $CMD
+                
+            else
+                # Run the command 
+                $CMD
+            fi
+            
         else
             echo "Your not running as root!"
         fi
@@ -138,34 +158,72 @@ then
                 # Run the command to create directory
                 $mkdir_cmd
                 
-                CP_CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
-                
-                # Run the command to move files
-                echo "Created directory $LIB_NIM_DIR copying jerasure binding"
-                $CP_CMD
-                sleep 1 # Rest user eyes!
-                
-                if [ $? -eq 0 ]
+                if [[ $WORKING_DIR == *"-master"* ]]
                 then
-                    echo "Successful"
+                    echo "You got from github"
+                    # Just create the jerasure folder in
+                    JDIR="$NIM_LIB_DIR/jerasure"
+                    
+                    create_dir="mkdir -p $JDIR"
+                    
+                    # Create the directory for jerasure
+                    $create_dir
+                    
+                    CMD="cp -rf $WORKING_DIR/* $JDIR"
+                    echo "We are working on it Second hand!"
+                    # Run the command
+                    $CMD
+                    
                 else
-                    echo "Unsuccessful command executed!"
+                    # Run the command 
+                    CP_CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
+                    
+                    # Run the command to move files
+                    echo "Created directory $LIB_NIM_DIR copying jerasure binding"
+                    $CP_CMD
+                    sleep 1 # Rest user eyes!
+                    
+                    if [ $? -eq 0 ]
+                    then
+                        echo "Successful"
+                    else
+                        echo "Unsuccessful command executed!"
+                    fi
                 fi
+                
             else
                 echo "If the binding fails with the path you have given!"
                 echo "reinstall with the path pointing to /usr/lib/nim"
                 
-                CP_CMD="cp -rf $WORKING_DIR $nim_path"
-                
-                echo "Installing library to $nim_path"
-                $CP_CMD
-                if [ $? -eq 0 ]
+                if [[ $WORKING_DIR == *"-master"* ]]
                 then
-                    echo "Successful"
+                    echo "You got from github"
+                    # Just create the jerasure folder in
+                    JDIR="$NIM_LIB_DIR/jerasure"
+                    
+                    create_dir="mkdir -p $JDIR"
+                    
+                    $create_dir
+                    
+                    CMD="cp -rf $WORKING_DIR/* $JDIR"
+                    echo "We are working on it"
+                    # Run the command
+                    $CMD
+                    
                 else
-                    echo "Unsuccessful command executed!"
+                    # Run the command                 
+                    CP_CMD="cp -rf $WORKING_DIR $nim_path"
+                    
+                    echo "Installing library to $nim_path"
+                    $CP_CMD
+                    
+                    if [ $? -eq 0 ]
+                    then
+                        echo "Successful"
+                    else
+                        echo "Unsuccessful command executed!"
+                    fi
                 fi
-                
             fi # End attempt to get user nim path
             
         else
