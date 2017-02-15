@@ -152,6 +152,9 @@ then
                     echo "Unsuccessful command executed!"
                 fi
             else
+                echo "If the binding fails with the path you have given!"
+                echo "reinstall with the path pointing to /usr/lib/nim"
+                
                 CP_CMD="cp -rf $WORKING_DIR $nim_path"
                 
                 echo "Installing library to $nim_path"
