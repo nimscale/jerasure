@@ -1,15 +1,17 @@
 # jerasure
 nim bindings for https://github.com/tsuraan/Jerasure
-
 - check C2NIM which will do most of the work
-
 ### src ###
-This source folder contains the nim binding.
-
+This source folder contains the converted c headers to nim.
 ### Shared Library ###
 The Project uses a shared library method to create binding, there were a few options to
 create bindng, one of which include, compiling the required header or c files, the best
-options truely depends on the developer and the needs of the project.
+options truely depends on the developer.
+
+### No building header files needed ###
+Because we are using shared library methods, we don't need to build c files.
+this makes the project smaller in size. But we can make the project depend on both
+header files and sharedlibrary when one of them is missing we can easily switch to available one.
 
 ### Common Shared Library path ###
 - /usr/local/lib
@@ -28,10 +30,69 @@ the walk around was to
 ```sh
     export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```
+As for debian looks like everything is okay it makes sharedlibrary available by default
 
-As for debian  everything is okay it makes sharedlibrary available by default.
+### Dependencies ###
+```sh
+    sudo apt-get install libjerasure-dev
+```
+Optionally the init.sh script can help configure dependencies.
+#### Using the init.sh script to configure and test jerasure binding. ####
+- Checking and installing dependencies required ( not nim )
+    ```sh
+    ./init depends
+    ```
+- Installing  nim jerasure binding with init.sh
+    ```sh
+    # This will move the whole jerasure binding to /usr/lib/nim for global access.
+    # by nim scripts that need binding.
+    ./init install 
+    ```
+- Unistalling or purging jerasure with init.sh
+    ```sh
+        # This will do the opposite of the install command, rm -rf /usr/lib/nim/jerasure
+        ./init purge
+    ```
 
-### Include directory ###
-This include directory contains the emergency c header files needed by the project, incase
-we find a problem with the shared library for jerasure will need to compile everything for
-our self from the include directory.
+### How to use Jerasure nim binding in you project ###
+After you have performed the installation step as shown above.
+- Create a simple jtesting.nim
+```py
+    import jerasure.src.jerasure
+    import jerasure.src.galois
+    import jerasure.src.cauchy
+    import jerasure.src.liberation
+    import jerasure.src.reed_sol
+    import jerasure.src.sharedlib # Not part of the standard binding
+    import jerasure.src.templates # Not part of the standard binding
+    import jerasure.src.gf_typedef # Not part of the standard binding
+    import jerasure.src.timing
+```
+- Compile if there are no errors complaining about missing modules. Greate! we good to develop using this binding.
+
+### Testing the binding examples ###
+You will see a directory called nimexample. Let's test the binding.
+```sh
+    nim c nimexample/jerasure_01.nim
+    # The ouput will be inside the nimexample go in.
+    ./jerasure_01 
+    # You should see some output.
+    
+    nim c nimexample/galois_01.nim
+    ./galois_01 # If no output we are good, if there are out put assertion failure.
+    
+    # You can do the same with other examples inside.
+```
+TODO: Just for kicks we could have made our examples take commandline input like:
+```sh
+    ./jerasure_01 2 4 12 # INFO r=2 c=3 w=14
+    # The above won't work with our examples because we didn't make it take commandline option.
+```
+### Possible Bugs ###
+```py
+    # If this binding of timing raises and error let me know
+    # for for the whole testing on Ubuntu had no error seen.
+    # but for testing in Debian there was an error.
+    import jerasure.src.timing 
+```
+### Enjoy! ###

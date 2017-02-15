@@ -3,7 +3,7 @@
 #  
 #  Copyright 2017 s8software <s8software@s8.dev.com>
 #  2017-02-14 
-#
+#  Author: Wangolo Joel
 # This is an initialization script
 # during the installation helping us determine
 # enviroment variables needed for our shared library
@@ -18,7 +18,6 @@ n="n"
 
 JERASURE_DIR='/usr/local/include/jerasures'
 
-
 function bash_instruction(){
     echo ""
     echo "The project depends on shared libJerasure.so.2 or higher."
@@ -32,7 +31,7 @@ function bash_instruction(){
 function dependency_config(){
     libraries=$(ls $SHARED_LIB_PATH | grep libJera.*.*so)
     
-    if [ "$(ls $SHARED_LIB_PATH | grep wangolo.*.*so)" ]
+    if [ "$(ls $SHARED_LIB_PATH | grep libJera.*.*so)" ]
     then
         echo "Required shared library exists ensure nim has access to it."
         for lib in $libraries
@@ -92,16 +91,77 @@ function dependency_config(){
     fi
 }
 
-if [ -d $JERASURE_DIR ]
+if [ "$1" = "install" ]
 then
-    echo -e "Looks like you have jerasure already installed. If there is any problem with jerasure.nim,"
-    echo -e "Please try uninstalling libjerasure-dev and re-installing again!"
-else
-    if [ "$LD_LIBRARY_PATH" = "" ]
+    if [ $(which nim) > /dev/null ]
     then
-        printf "Missing Shared Library Enviroment variable Attempting to export sharedlibrary directory.\n\n"
-        export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+        echo "Nim compiler found at $(which nim)"
+    else
+        echo "Unable to find nim compiler ensure you have installed it at /usr/bin/nim"
     fi
     
-    dependency_config
+    # Directory to move our development files
+    NIM_LIB_DIR="/usr/lib/nim"
+    CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
+     
+    if [ -d $NIM_LIB_DIR ]
+    then
+        echo "Copying Jerasure nim binding to directory $NIM_LIB_DIR"
+        
+        if [ $EUID -eq 0 ]
+        then
+            
+            echo "Copying dev files $WORKING_DIR to $NIM_LIB_DIR"
+            $CMD
+        else
+            echo "Your not running as root!"
+        fi
+        
+    else
+        echo "Directory $NIM_LIB_DIR not found have you installed nim?"
+    fi
+    
+elif [ "$1" = "purge" ]
+    NIM_LIB_DIR="/usr/lib/nim"
+
+    package="jerasure"
+    CMD="rm -rf  $NIM_LIB_DIR/$package"
+
+    if [ -d $NIM_LIB_DIR ]
+    then
+        echo "Removing Jerasure nim binding from directory $NIM_LIB_DIR/$package"
+        
+        if [ $EUID -eq 0 ]
+        then
+            
+            echo "Removing dev files to $NIM_LIB_DIR/$package"
+            $CMD
+        else
+            echo "Your not running as root!"
+        fi
+        
+    else
+        echo "Directory $NIM_LIB_DIR not found have you installed nim?"
+    fi
+    
+then
+    echo "purging directory!"
+elif [ "$1" = "depends" ]
+then
+    if [ -d $JERASURE_DIR ]
+    then
+        echo -e "Looks like you have jerasure already installed. If there is any problem with jerasure.nim,"
+        echo -e "Please try uninstalling libjerasure-dev and re-installing again!"
+    else
+        if [ "$LD_LIBRARY_PATH" = "" ]
+        then
+            printf "Missing Shared Library Enviroment variable Attempting to export shared library directory.\n\n"
+            export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+        fi
+        
+        dependency_config
+    fi
+
+else
+    echo $1
 fi

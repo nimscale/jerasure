@@ -1,4 +1,13 @@
-import ../src/jerasure, ../src/cauchy
+import jerasure.src.jerasure
+import jerasure.src.galois
+import jerasure.src.cauchy
+import jerasure.src.liberation
+import jerasure.src.reed_sol
+import jerasure.src.sharedlib # Not part of the standard binding
+import jerasure.src.templates # Not part of the standard binding
+import jerasure.src.gf_typedef # Not part of the standard binding
+import jerasure.src.timing
+
 # Demostrating cauchy.
 # We could use the commandline options here
 

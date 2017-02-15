@@ -12,7 +12,15 @@
 # our statically linked library, when compiling
 # it even other proc that depend on that library
 # Will have access to the defintions.
-import ../src/jerasure, ../src/liberation
+import jerasure.src.jerasure
+import jerasure.src.galois
+import jerasure.src.cauchy
+import jerasure.src.liberation
+import jerasure.src.reed_sol
+import jerasure.src.sharedlib # Not part of the standard binding
+import jerasure.src.templates # Not part of the standard binding
+import jerasure.src.gf_typedef # Not part of the standard binding
+import jerasure.src.timing
 
 
 #Needed for pointer arithmetics
