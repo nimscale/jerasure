@@ -1,7 +1,7 @@
 # jerasure
 nim bindings for https://github.com/tsuraan/Jerasure
 - check C2NIM which will do most of the work
-
+- 
 ### src ###
 This source folder contains the converted c headers to nim.
 
@@ -76,21 +76,30 @@ After you have performed the installation step as shown above.
     import jerasure.src.gf_typedef # Not part of the standard binding
     import jerasure.src.timing
 ```
+Pass the path were our module was installed to see where the module is installed re run the script with the install command
+```sh
+    nim c -p:/path/to/our/module jtesting.nim
+```
 - Compile if there are no errors complaining about missing modules. Greate! we good to develop using this binding.
 
 ### Testing the binding examples ###
 You will see a directory called nimexample. Let's test the binding.
 ```sh
-    nim c nimexample/jerasure_01.nim
+    # Please note that /usr/local may change depending on your installation directory
+    # You may need to note when installing the script it will show you where
+    # the module is installed.
+    nim c -p:/usr/local nimexample/jerasure_01.nim
     # The ouput will be inside the nimexample go in.
     ./jerasure_01 
     # You should see some output.
     
-    nim c nimexample/galois_01.nim
+    nim c -p:/usr/local nimexample/galois_01.nim
     ./galois_01 # If no output we are good, if there are out put assertion failure.
     
     # You can do the same with other examples inside.
 ```
+NOTE: When running ./init.sh you will see where our module is installed.
+so you may use that path when compiling as demostrated.
 TODO: Just for kicks we could have made our examples take commandline input like:
 ```sh
     ./jerasure_01 2 4 12 # INFO r=2 c=3 w=14

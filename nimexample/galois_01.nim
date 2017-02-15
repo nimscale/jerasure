@@ -1,4 +1,13 @@
-import ../src/galois, ../src/jerasure
+import jerasure.src.jerasure
+import jerasure.src.galois
+import jerasure.src.cauchy
+import jerasure.src.liberation
+import jerasure.src.reed_sol
+import jerasure.src.sharedlib # Not part of the standard binding
+import jerasure.src.templates # Not part of the standard binding
+import jerasure.src.gf_typedef # Not part of the standard binding
+#import jerasure.src.timing
+
 
 # We want to test for galois here
 # The test is going to run against

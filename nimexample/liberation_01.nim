@@ -20,7 +20,7 @@ import jerasure.src.reed_sol
 import jerasure.src.sharedlib # Not part of the standard binding
 import jerasure.src.templates # Not part of the standard binding
 import jerasure.src.gf_typedef # Not part of the standard binding
-import jerasure.src.timing
+#import jerasure.src.timing
 
 
 #Needed for pointer arithmetics

@@ -97,38 +97,49 @@ if [ "$1" = "install" ]
 then
     if [ $(which nim) > /dev/null ]
     then
-        echo "Nim compiler found at $(which nim)"
+        echo ""
     else
         echo "Unable to find nim compiler ensure you have installed it at /usr/bin/nim"
     fi
     
     # Directory to move our development files
     NIM_LIB_DIR="/usr/lib/nim"
+    BASE_LIB_DIR="/usr/local"
     CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
      
     if [ -d $NIM_LIB_DIR ]
-    then
-        echo "Copying Jerasure nim binding to directory $NIM_LIB_DIR"
-        
+    then        
         if [ $EUID -eq 0 ]
         then
             
-            echo "Copying dev files $WORKING_DIR to $NIM_LIB_DIR"
-            
             if [[ $WORKING_DIR == *"-master"* ]]
             then
-                echo "You got from github"
                 # Just create the jerasure folder in
                 JDIR="$NIM_LIB_DIR/jerasure"
                 
                 create_dir="mkdir -p $JDIR"
                 
-                $create_dir
-                
-                CMD="cp -rf $WORKING_DIR/* $JDIR"
-                echo "We are working on it"
-                # Run the command
-                $CMD
+                if [ -d $JDIR ]
+                then
+                    echo "Module was found already there"
+                    echo
+                    echo "Compile with nim c -p:$NIM_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
+                    
+                else
+                    echo "Copying dev files $WORKING_DIR to $NIM_LIB_DIR"
+                    $create_dir
+                    
+                    CMD="cp -rf $WORKING_DIR/* $JDIR"
+
+                    # Run the command
+                    $CMD
+                    
+                    echo "Now compile passing our module path!"
+                    echo
+                    echo "nim c -p:$NIM_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
+                fi
                 
             else
                 # Run the command 
@@ -138,93 +149,69 @@ then
         else
             echo "Your not running as root!"
         fi
-        
+    
+    # In case directory does not exist for nim!
     else
-        echo "Directory $NIM_LIB_DIR not found have you installed nim?"
+        echo "Directory $NIM_LIB_DIR not found Will install in $BASE_LIB_DIR"
         echo ""
         sleep 2 # A little nap won't hurt
         
         if [ $EUID -eq 0 ]
         then
-            echo "Give us nim path or of leave blank:"
-            read nim_path
-            y_n=""
-            
-            if [ -z "${nim_path// }"  ]
-            then                
-                echo "Creating directory $NIM_LIB_DIR"
-                mkdir_cmd="mkdir -p $NIM_LIB_DIR"
+                                    
+            if [[ $WORKING_DIR == *"-master"* ]]
+            then
+                # Just create the jerasure folder in
+                JDIR="$BASE_LIB_DIR/jerasure"
                 
-                # Run the command to create directory
-                $mkdir_cmd
+                create_dir="mkdir -p $JDIR"
                 
-                if [[ $WORKING_DIR == *"-master"* ]]
+                if [ -d $JDIR ]
                 then
-                    echo "You got from github"
-                    # Just create the jerasure folder in
-                    JDIR="$NIM_LIB_DIR/jerasure"
+                    echo "You have already installed just compile with!"
+                    echo 
+                    echo "nim c -p:$BASE_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
                     
-                    create_dir="mkdir -p $JDIR"
-                    
+                else
                     # Create the directory for jerasure
                     $create_dir
                     
                     CMD="cp -rf $WORKING_DIR/* $JDIR"
-                    echo "We are working on it Second hand!"
                     # Run the command
                     $CMD
                     
-                else
-                    # Run the command 
-                    CP_CMD="cp -rf $WORKING_DIR $NIM_LIB_DIR"
-                    
-                    # Run the command to move files
-                    echo "Created directory $LIB_NIM_DIR copying jerasure binding"
-                    $CP_CMD
-                    sleep 1 # Rest user eyes!
-                    
-                    if [ $? -eq 0 ]
-                    then
-                        echo "Successful"
-                    else
-                        echo "Unsuccessful command executed!"
-                    fi
+                    echo "Now compile passing our module path!"
+                    echo
+                    echo "nim c -p:$BASE_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
                 fi
                 
             else
-                echo "If the binding fails with the path you have given!"
-                echo "reinstall with the path pointing to /usr/lib/nim"
+                # Run the command 
+                JDIR="$BASE_LIB_DIR/jerasure"
                 
-                if [[ $WORKING_DIR == *"-master"* ]]
+                create_dir="mkdir -p $JDIR"
+                
+                if [ -d $JDIR ]
                 then
-                    echo "You got from github"
-                    # Just create the jerasure folder in
-                    JDIR="$NIM_LIB_DIR/jerasure"
-                    
-                    create_dir="mkdir -p $JDIR"
-                    
-                    $create_dir
-                    
-                    CMD="cp -rf $WORKING_DIR/* $JDIR"
-                    echo "We are working on it"
-                    # Run the command
-                    $CMD
+                    echo "You have already installed just compile with!"
+                    echo 
+                    echo "nim c -p:$BASE_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
                     
                 else
-                    # Run the command                 
-                    CP_CMD="cp -rf $WORKING_DIR $nim_path"
+                    CP_CMD="cp -rf $WORKING_DIR $JDIR"
                     
-                    echo "Installing library to $nim_path"
                     $CP_CMD
+                    sleep 1 # Rest user eyes!
                     
-                    if [ $? -eq 0 ]
-                    then
-                        echo "Successful"
-                    else
-                        echo "Unsuccessful command executed!"
-                    fi
+                    echo "Now compile passing our module path!"
+                    echo
+                    echo "nim c -p:$BASE_LIB_DIR nimexample/jerasure_01.nim"
+                    echo 
                 fi
-            fi # End attempt to get user nim path
+            fi
             
         else
             echo "Could not create the directory $LIB_NIM_DIR"
