@@ -1,8 +1,10 @@
 # jerasure
 nim bindings for https://github.com/tsuraan/Jerasure
 - check C2NIM which will do most of the work
+
 ### src ###
 This source folder contains the converted c headers to nim.
+
 ### Shared Library ###
 The Project uses a shared library method to create binding, there were a few options to
 create bindng, one of which include, compiling the required header or c files, the best
@@ -26,28 +28,34 @@ this made our problem complain.
 ```sh
     ./jerasure_01: error while loading shared libraries: libJerasure.so.2: cannot open shared object file: No such file or directory
 ```
+
 the walk around was to
 ```sh
     export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```
+
 As for debian looks like everything is okay it makes sharedlibrary available by default
 
 ### Dependencies ###
 ```sh
     sudo apt-get install libjerasure-dev
 ```
+
 Optionally the init.sh script can help configure dependencies.
+
 #### Using the init.sh script to configure and test jerasure binding. ####
 - Checking and installing dependencies required ( not nim )
 ```sh
 ./init depends
 ```
+
 - Installing  nim jerasure binding with init.sh
 ```sh
 # This will move the whole jerasure binding to /usr/lib/nim for global access.
 # by nim scripts that need binding.
 ./init install 
 ```
+
 - Unistalling or purging jerasure with init.sh
 ```sh
     # This will do the opposite of the install command, rm -rf /usr/lib/nim/jerasure
