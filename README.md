@@ -39,20 +39,20 @@ As for debian looks like everything is okay it makes sharedlibrary available by 
 Optionally the init.sh script can help configure dependencies.
 #### Using the init.sh script to configure and test jerasure binding. ####
 - Checking and installing dependencies required ( not nim )
-    ```sh
-    ./init depends
-    ```
+```sh
+./init depends
+```
 - Installing  nim jerasure binding with init.sh
-    ```sh
-    # This will move the whole jerasure binding to /usr/lib/nim for global access.
-    # by nim scripts that need binding.
-    ./init install 
-    ```
+```sh
+# This will move the whole jerasure binding to /usr/lib/nim for global access.
+# by nim scripts that need binding.
+./init install 
+```
 - Unistalling or purging jerasure with init.sh
-    ```sh
-        # This will do the opposite of the install command, rm -rf /usr/lib/nim/jerasure
-        ./init purge
-    ```
+```sh
+    # This will do the opposite of the install command, rm -rf /usr/lib/nim/jerasure
+    ./init purge
+```
 
 ### How to use Jerasure nim binding in you project ###
 After you have performed the installation step as shown above.
