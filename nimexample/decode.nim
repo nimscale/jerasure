@@ -76,7 +76,7 @@ type
   off_t*{.header: "<sys/stat.h>", importc:"off_t".} = object
 
 type
-    status* {.header: "<sys/stat.h>", importc:"stat".} = object
+    statt* = object #{.header: "<sys/stat.h>", importc:"stat".} = object
        st_size*: off_t            ##  total size, in bytes
 
 proc main*(argc: cint; argv: cstringArray): cint =
@@ -110,7 +110,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
     var blocksize: cint = 0 ##  size of individual files
     var origsize: cint##  size of file before padding
     var total: cint##  used to write data, not padding to file
-    var status: status_file
+    var status: statt
 
     #stat* {.header: "<sys/stat.h>", importc:"stat".} = object
 
