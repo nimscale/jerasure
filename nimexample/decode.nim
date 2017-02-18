@@ -43,6 +43,7 @@ proc stat*(pathname: cstring; buf: ptr ): cint {.header:"<sys/stat.h>", importc:
 proc fread*(`ptr`: pointer; size: csize; nmemb: csize; stream: ptr FILE): csize {.header:"<stdio.h>", importc:"fread"}
 proc fseek*(stream: ptr FILE; offset: clong; whence: cint): cint {.header:"<stdio.h>", importc:"fseek"}
 proc fwrite*(`ptr`: pointer; size: csize; nmemb: csize; stream: ptr FILE): csize {.header:"<stdio.h>", importc:"fwrite"}
+proc free*(`ptr`: pointer) {.header:"<stdlib.h>", importc:"free"}
 
 const
   SEEK_SET* = 0
@@ -82,6 +83,8 @@ type
 proc main*(argc: cint; argv: cstringArray): cint =
     var fp: ptr FILE ##  File pointer
     ##  Jerasure arguments
+
+    echo "Argument passed is ", argv[1] , " ", strlen(argv[1])
 
     var data: cstringArray
     var coding: cstringArray
@@ -390,4 +393,37 @@ proc main*(argc: cint; argv: cstringArray): cint =
       inc(n)
       discard fclose(fp)
       inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
+
+    ##  Free allocated memory
+    free(cs1)
+    free(extension)
+    free(fname)
+    free(data)
+    free(coding)
+    free(erasures)
+    free(erased)
+
+    ##  Stop timing and print time
+    timing_set(addr(t2))
+    tsec = timing_delta(addr(t1), addr(t2))
+    printf("Decoding (MB/sec): %0.10f\x0A", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](totalsec))
+
+    printf("De_Total (MB/sec): %0.10f\x0A\x0A", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](tsec))
+
+    return 0
+
+when isMainModule:
+    var args: seq[TaintedString] #string
+    args = commandLineParams()
+
+    var argv: array[0..6, string]
+
+    for indx in low(args)..high(args):
+        if indx != 0:
+            argv[indx] = args[indx]
+
+
+    var source = allocCStringArray(argv)
+
+    discard main(2, source)
 
