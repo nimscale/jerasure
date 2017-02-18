@@ -128,6 +128,16 @@ proc main*(argc: cint; argv: cstringArray): cint =
       extension: ptr char
       empty_char: ptr char
 
+    # Create temprary char pointer holders
+    var
+       cs1_tmp: char
+       cs2_tmp: char
+       ext_tmp: char
+
+    # Assign our cs1, cs2 temprary address
+    cs1.addr[] = addr(cs1_tmp)
+    cs2.addr[] = addr(cs2_tmp)
+
     var fname: cstring
     var md: cint
     var curdir: cstring
