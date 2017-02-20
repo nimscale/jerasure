@@ -211,4 +211,3 @@ proc jerasure_print_bitmatrix*(m: ptr ; rows: cint; cols: cint; w: cint) {.impor
     # @param: cols cint
     # @param: w cint
     # @return: void
-

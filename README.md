@@ -10,6 +10,18 @@ The Project uses a shared library method to create binding, there were a few opt
 create bindng, one of which include, compiling the required header or c files, the best
 options truely depends on the developer.
 
+### Including shared library in nim.cnf ###
+During compilation the binding requires; so you may need to include
+them in your nim.conf where every it is.
+```sh
+    --passl: "/usr/local/lib/libJerasure.so"
+    --passl: "/usr/local/lib/libgf_complete.so"
+```
+NOTE: Depending on where nim is installed, at times it will automatically do
+the linking as we have included it already into development binding.
+But if there is an error demanding those library then just include them in your
+nim.conf.
+
 ### No building header files needed ###
 Because we are using shared library methods, we don't need to build c files.
 this makes the project smaller in size. But we can make the project depend on both
