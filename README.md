@@ -22,6 +22,12 @@ the linking as we have included it already into development binding.
 But if there is an error demanding those library then just include them in your
 nim.conf.
 
+### Edit your nim.conf to include  jerasure library search path ###
+```ssh
+   $path="/usr/lib/nim"
+```
+This is were nim will look for when importing our library
+
 ### No building header files needed ###
 Because we are using shared library methods, we don't need to build c files.
 this makes the project smaller in size. But we can make the project depend on both
