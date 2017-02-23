@@ -28,10 +28,10 @@ template `-`[T](a: ptr T, b: int): ptr T = `+`(a, -b)
 
 
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
-proc strrchr*(str: cstring; c: int): char {.header: "<stdio.h>", importc:"strrchr"}
+proc strrchr*(str: cstring; c: char): cstring {.header: "<stdio.h>", importc:"strrchr"}
 proc strcpy*(dest: cstring; src: cstring): char {.header: "<string.h>", importc:"strcpy"}
-proc strchr*(s: cstring; c: cint): char {.header: "<string.h>", importc:"strchr"}
-proc strdup*(s: ptr char): ptr char {.header: "<string.h>", importc:"strdup"}
+proc strchr*(s: cstring; c: char): cstring {.header: "<string.h>", importc:"strchr"}
+proc strdup*(s: cstring ): cstring {.header: "<string.h>", importc:"strdup"}
 proc strlen*(s: cstring): csize {.header: "<string.h>", importc:"strlen"}
 proc malloc*(size: csize): pointer {.header: "<stdlib.h>", importc:"malloc"}
 proc sprintf*(str: cstring; format: cstring): cint {.header:"<stdio.h>", importc:"sprintf",varargs.}
@@ -44,6 +44,8 @@ proc fread*(`ptr`: pointer; size: csize; nmemb: csize; stream: ptr FILE): csize 
 proc fseek*(stream: ptr FILE; offset: clong; whence: cint): cint {.header:"<stdio.h>", importc:"fseek"}
 proc fwrite*(`ptr`: pointer; size: csize; nmemb: csize; stream: ptr FILE): csize {.header:"<stdio.h>", importc:"fwrite"}
 proc free*(`ptr`: pointer) {.header:"<stdlib.h>", importc:"free"}
+proc getcwd*(buf: cstring; size: csize): cstring {.header: "<unistd.h>", importc: "getcwd"}
+proc get_current_dir_name*(): cstring {.header: "<unistd.h>", importc: "get_current_dir_name"}
 
 const
   SEEK_SET* = 0
@@ -82,10 +84,8 @@ type
 
 proc main*(argc: cint; argv: cstringArray): cint =
     var fp: ptr FILE ##  File pointer
+
     ##  Jerasure arguments
-
-    echo "Argument passed is ", argv[1] , " ", strlen(argv[1])
-
     var data: cstringArray
     var coding: cstringArray
     var erasures: ptr cint
@@ -110,6 +110,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
       i: cint
       j: cint
 
+    var tmp_sprintf: cint;
+
     var blocksize: cint = 0 ##  size of individual files
     var origsize: cint##  size of file before padding
     var total: cint##  used to write data, not padding to file
@@ -122,11 +124,17 @@ proc main*(argc: cint; argv: cstringArray): cint =
     ##  Used to recreate file names
     var temp: cstring
 
+    #var
+    #  cs1: ptr char
+    #  cs2: ptr char
+    #  extension: ptr char
+    #  empty_char: ptr char
     var
-      cs1: ptr char
-      cs2: ptr char
-      extension: ptr char
-      empty_char: ptr char
+      cs1: cstring
+      cs2: cstring
+      extension: cstring
+
+    var curdir: cstring = get_current_dir_name()
 
     # Create temprary char pointer holders
     var
@@ -140,7 +148,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
     var fname: cstring
     var md: cint
-    var curdir: cstring
+    #var curdir: ptr cstring
+    var tmp_curdir:cstring
 
     ##  Used to time decoding
     var
@@ -163,78 +172,84 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
     ##  Error checking parameters
     if argc != 2:
-      write(stderr, "usage: inputfile\x0A")
+      write(stderr, "usage: inputfile\n")
       quit(0)
 
-    curdir = cast[cstring](alloc(sizeof(char) * 1000))
-
-    #assert(curdir == getcwd(curdir, 1000))
-
+    #curdir = cast[cstring](malloc(sizeof(char) * 1000))
     ##  Begin recreation of file names
     #cs1 = cast[char](cast[cstring](alloc(sizeof(char) * (argv[1].len))))
-    cs1[] = cast[char](alloc(sizeof(char) * strlen(argv[1])))
-    cs2[] = strrchr(argv[1], cast[int]('/'))
+    cs1 = cast[cstring](malloc(sizeof(char) * strlen(argv[1])))
+    #echo "CSI MALLOCED ", cs1
+    cs2 = strrchr(argv[1], '/')
 
     if cs2 != nil:
       # (matrix[].addr + i)[] = n # The failed C was like   matrix[i] = n
       #(cs2[].addr + cs2[].addr)[] = cs2[]
       #(cs2[].addr + cs2[].addr)[] = cs2.addr
-      inc(cs2[])
+      #inc(cs2)
 
       discard strcpy(cs1, cs2)
 
     else:
       discard strcpy(cs1, argv[1])
 
-    cs2[] = strchr(cs1, cast[cint]('.'))
+    cs2 = strchr(cs1, '.')
 
     if cs2 != nil:
       #(matrix[].addr + i)[] = n # The failed C was like   matrix[i] = n
       #(extension[].addr)[] = 'W' #(strdup(cs2)[].addr)[]
       extension = strdup(cs2)
-      cs2[] = '\0'
+      cs2 = cast[cstring]('\0')
 
     else:
-      extension = strdup(empty_char)
+      extension = strdup("")
 
-    fname = cast[cstring](malloc(sizeof(cast[cstring]((100 + strlen(argv[1]) + 20)))))
-
+    #echo "BEFORE MALLOCK ", fname
+    #fname = cast[cstring](malloc(sizeof(cast[cstring]((10000 + strlen(argv[1]) + 400)))))
+    fname = cast[cstring] (malloc( sizeof(cstring) * (100 + strlen(argv[1]) + 400)))
+    #echo "AFTER MALLOCK BEFORE SPTINTF ", fname
     ##  Read in parameters from metadata file
-    echo sprintf(fname, "%s/Coding/%s_meta.txt", curdir, cs1)
+    tmp_sprintf =  sprintf(fname, "%s/Coding%s_meta.txt\n", curdir, cs1)
 
+    #echo "AFTER MALLOCK ", fname
+    #echo tmp_sprintf
     fp = fopen(fname, "rb")
+    #echo "If we reach here then all if fine"
+   # echo " "
+
     if fp == nil:
-      write(stderr, "Error: no metadata file %s\x0A", fname)
+      write(stderr, "Error: no metadata file ", fname)
       quit(1)
 
     temp = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20)))
 
     if fscanf(fp, "%s", temp) != 1:
-      write(stderr, "Metadata file - bad format\x0A")
+      write(stderr, "Metadata file - bad format\n")
       quit(0)
 
     if fscanf(fp, "%d", addr(origsize)) != 1:
-      write(stderr, "Original size is not valid\x0A")
+      write(stderr, "Original size is not valid\n")
       quit(0)
 
     if fscanf(fp, "%d %d %d %d %d", addr(k), addr(m), addr(w), addr(packetsize),
              addr(buffersize)) != 5:
-      write(stderr, "Parameters are not correct\x0A")
-    quit(0)
+      write(stderr, "Parameters are not correct\n")
+
+    #echo "WE have reached some kind of a peek"
 
     c_tech = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20)))
     if fscanf(fp, "%s", c_tech) != 1:
-      write(stderr, "Metadata file - bad format\x0A")
+      write(stderr, "Metadata file - bad format\n")
       quit(0)
 
     if fscanf(fp, "%d", addr(tech)) != 1:
-      write(stderr, "Metadata file - bad format\x0A")
+      write(stderr, "Metadata file - bad format\n")
       quit(0)
 
     `method` = cast[Coding_Technique](tech) # Original failed code `method` = tech
 
     if fscanf(fp, "%d", addr(readins)) != 1:
-      write(stderr, "Metadata file - bad format\x0A")
+      write(stderr, "Metadata file - bad format\n")
       quit(0)
 
     discard fclose(fp)
@@ -372,13 +387,13 @@ proc main*(argc: cint; argv: cstringArray): cint =
         i = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data, coding,
                                         blocksize, packetsize, 1)
       else:
-        write(stderr, "Not a valid coding technique.\x0A")
+        write(stderr, "Not a valid coding technique.\n")
         quit(0)
       timing_set(addr(t4))
 
       ##  Exit if decoding was unsuccessful
       if i == - 1:
-        write(stderr, "Unsuccessful!\x0A")
+        write(stderr, "Unsuccessful!\n")
         quit(0)
       discard sprintf(fname, "%s/Coding/%s_decoded%s", curdir, cs1, extension)
       if n == 1:
@@ -416,9 +431,9 @@ proc main*(argc: cint; argv: cstringArray): cint =
     ##  Stop timing and print time
     timing_set(addr(t2))
     tsec = timing_delta(addr(t1), addr(t2))
-    printf("Decoding (MB/sec): %0.10f\x0A", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](totalsec))
+    printf("Decoding (MB/sec): %0.10f\n\n", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](totalsec))
 
-    printf("De_Total (MB/sec): %0.10f\x0A\x0A", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](tsec))
+    printf("De_Total (MB/sec): %0.10f\n\n", ((cast[int64](origsize)) div cast[int64](1024.0) div cast[int64](1024.0)) div cast[int64](tsec))
 
     return 0
 
@@ -426,14 +441,16 @@ when isMainModule:
     var args: seq[TaintedString] #string
     args = commandLineParams()
 
-    var argv: array[0..6, string]
+    if args.len() >= 1:
+          var source = allocCStringArray(args)
 
-    for indx in low(args)..high(args):
-        if indx != 0:
-            argv[indx] = args[indx]
+          ### NOTE: our main function will acess the values from 1
+          # But if we try to access like this source[1] it is nill
+          # So attempt to place in source[1] the value of source[0]
+          if source[1] == nil:
+              source[1] = source[0]
 
-
-    var source = allocCStringArray(argv)
-
-    discard main(2, source)
-
+          discard main(2, source)
+    else:
+        echo "usage: inputfile"
+        echo "eg  ./decode  /home/s8software/index.html"
