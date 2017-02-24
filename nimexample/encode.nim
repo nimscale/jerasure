@@ -81,10 +81,10 @@ template `-`[T](a: ptr T, b: int): ptr T = `+`(a, -b)
 
 
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
-proc strrchr*(str: cstring; c: int): char {.header: "<stdio.h>", importc:"strrchr"}
+proc strrchr*(str: cstring; c: char): char {.header: "<stdio.h>", importc:"strrchr"}
 proc strcpy*(dest: cstring; src: cstring): char {.header: "<string.h>", importc:"strcpy"}
-proc strchr*(s: cstring; c: cint): char {.header: "<string.h>", importc:"strchr"}
-proc strdup*(s: ptr char): ptr char {.header: "<string.h>", importc:"strdup"}
+proc strchr*(s: cstring; c: char): char {.header: "<string.h>", importc:"strchr"}
+proc strdup*(s: cstring): ptr char {.header: "<string.h>", importc:"strdup"}
 proc strlen*(s: cstring): csize {.header: "<string.h>", importc:"strlen"}
 proc malloc*(size: csize): pointer {.header: "<stdlib.h>", importc:"malloc"}
 proc sprintf*(str: cstring; format: cstring): cint {.header:"<stdio.h>", importc:"sprintf",varargs.}
@@ -103,6 +103,10 @@ proc getcwd*(buf: cstring; size: csize): cstring {.header:"<unistd.h>", importc:
 proc mkdir*(path: cstring): cint {.header:"<sys/stat.h>", importc:"mkdir"}
 proc perror*(s: cstring) {.header:"<stdio.h>", importc:"perror"}
 
+# The following mkdir we ommited the mode mode_t which required a stat defined
+# which we couln'd get. and we replaced with cstring
+proc mkdir*(path: cstring; mode: cint): cint {.header:"<sys/stat.h>", importc:"mkdir"}
+
 const
   SEEK_SET* = 0
   SEEK_CUR* = 1
@@ -110,6 +114,9 @@ const
 
 const
   N* = 10
+
+const
+  coding_dir_mode: cint=16893
 
 type
   Coding_Technique* = enum
@@ -208,8 +215,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
       var temp: array[5, char]
 
       var
-        s1: ptr char
-        s2: ptr  char
+        s1: cstring
+        s2: cstring
         empty_char: ptr char
         extension: cstring
 
@@ -246,12 +253,12 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
       ##  Error check Arguments
       if argc != 8:
-          write(stderr,
-                  "usage: inputfile k m coding_technique w packetsize buffersize\x0A")
-          write(stderr, "\x0AChoose one of the following coding techniques: \x0Areed_sol_van, \x0Areed_sol_r6_op, \x0Acauchy_orig, \x0Acauchy_good, \x0Aliberation, \x0Ablaum_roth, \x0Aliber8tion")
-          write(stderr, "\x0A\x0APacketsize is ignored for the reed_sol\'s")
-          write(stderr, "\x0ABuffersize of 0 means the buffersize is chosen automatically.\x0A")
-          write(stderr, "\x0AIf you just want to test speed, use an inputfile of \"-number\" where number is the size of the fake file you want to test.\x0A\x0A")
+          write(stderr, "usage: inputfile k m coding_technique w packetsize buffersize\n")
+          echo ""
+          write(stderr, "Choose one of the following coding techniques: \nreed_sol_van, \nreed_sol_r6_op, \ncauchy_orig, \ncauchy_good, \nliberation, \nblaum_roth, \nliber8tion")
+          write(stderr, "\tPacketsize is ignored for the reed_sol\'s")
+          write(stderr, "Buffersize of 0 means the buffersize is chosen automatically.\x0A")
+          write(stderr, "If you just want to test speed, use an inputfile of \"-number\" where number is the size of the fake file you want to test.\x0A\x0A")
           quit(0)
 
       ##  Conversion of parameters and error checking
@@ -261,6 +268,10 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
       if sscanf(argv[3], "%d", addr(m)) == 0 or m < 0:
         write(stderr, "Invalid value for m\x0A")
+        quit(0)
+
+      if sscanf(argv[5], "%d", addr(w)) == 0 or w < 0:
+        write(stderr, "Invalid value for w\n")
         quit(0)
 
       ##  Determine proper buffersize by finding the closest valid buffersize to the input value
@@ -300,32 +311,32 @@ proc main*(argc: cint; argv: cstringArray): cint =
       elif strcmp(argv[4], "reed_sol_van") == 0:
         tech = Reed_Sol_Van
         if w != 8 and w != 16 and w != 32:
-            write(stderr, "w must be one of {8, 16, 32}\x0A")
+            write(stderr, "w must be one of {8, 16, 32}\n")
             quit(0)
 
       elif strcmp(argv[4], "reed_sol_r6_op") == 0:
         if m != 2:
-          write(stderr, "m must be equal to 2\x0A")
+          write(stderr, "m must be equal to 2\n")
           quit(0)
 
         if w != 8 and w != 16 and w != 32:
-          write(stderr, "w must be one of {8, 16, 32}\x0A")
+          write(stderr, "w must be one of {8, 16, 32}\n")
           quit(0)
         tech = Reed_Sol_R6_Op
 
       elif strcmp(argv[4], "cauchy_orig") == 0:
         tech = Cauchy_Orig
         if packetsize == 0:
-          write(stderr, "Must include packetsize.\x0A")
+          write(stderr, "Must include packetsize.\n")
           quit(0)
 
       elif strcmp(argv[4], "liberation") == 0:
         if k > w:
-          write(stderr, "k must be less than or equal to w\x0A")
+          write(stderr, "k must be less than or equal to w\n")
           quit(0)
 
         if w <= 2 or not cast[bool](w mod 2) or not cast[bool](is_prime(w)):
-          write(stderr, "w must be greater than two and w must be prime\x0A")
+          write(stderr, "w must be greater than two and w must be prime\n")
           quit(0)
 
         if packetsize == 0:
@@ -333,17 +344,17 @@ proc main*(argc: cint; argv: cstringArray): cint =
           quit(0)
 
         if (packetsize mod (sizeof(clong))) != 0:
-          write(stderr, "packetsize must be a multiple of sizeof(long)\x0A")
+          write(stderr, "packetsize must be a multiple of sizeof(long)\n")
           quit(0)
         tech = Liberation
 
       elif strcmp(argv[4], "blaum_roth") == 0:
           if k > w:
-            write(stderr, "k must be less than or equal to w\x0A")
+            write(stderr, "k must be less than or equal to w\n")
             quit(0)
 
           if w <= 2 or not cast[bool]((w + 1) mod 2) or not cast[bool](is_prime(w + 1)):
-            write(stderr, "w must be greater than two and w+1 must be prime\x0A")
+            write(stderr, "w must be greater than two and w+1 must be prime\n")
             quit(0)
 
           if packetsize == 0:
@@ -351,25 +362,25 @@ proc main*(argc: cint; argv: cstringArray): cint =
             quit(0)
 
           if (packetsize mod (sizeof((clong)))) != 0:
-            write(stderr, "packetsize must be a multiple of sizeof(long)\x0A")
+            write(stderr, "packetsize must be a multiple of sizeof(long)\n")
             quit(0)
           tech = Blaum_Roth
 
       elif strcmp(argv[4], "liber8tion") == 0:
           if packetsize == 0:
-            write(stderr, "Must include packetsize\x0A")
+            write(stderr, "Must include packetsize\n")
             quit(0)
 
           if w != 8:
-            write(stderr, "w must equal 8\x0A")
+            write(stderr, "w must equal 8\n")
             quit(0)
 
           if m != 2:
-            write(stderr, "m must equal 2\x0A")
+            write(stderr, "m must equal 2\n")
             quit(0)
 
           if k > w:
-            write(stderr, "k must be less than or equal to w\x0A")
+            write(stderr, "k must be less than or equal to w\n")
             quit(0)
           tech = Liber8tion
 
@@ -391,13 +402,12 @@ proc main*(argc: cint; argv: cstringArray): cint =
             write(stderr, "Unable to open file.\x0A")
             quit(0)
 
-          if(dirExists("Coding")):
-              write(stderr, "Unable to create Coding directory.It already exists")
+          i = mkdir("Coding", coding_dir_mode)
+
+          if i == -1:
+              write(stderr, "Unable to create Coding directory. It already exists\n")
               quit(0)
 
-          createDir("Coding")
-          #if i == - 1 and errno != EEXIST:
-          #  quit(0)
           discard stat(argv[1], addr(status))
           size = cast[int32](status.st_size)
 
@@ -449,22 +459,34 @@ proc main*(argc: cint; argv: cstringArray): cint =
         block_tmp_handler = cast[cstring](malloc(sizeof(char) * newsize))
         `block` = addr(block_tmp_handler)
 
+      #echo "If you see this message then the Seg fault is belof this line"
       ##  Break inputfile name into the filename and extension
-      s1[] = cast[char](cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20))))
-      s2[] = cast[char](strrchr(argv[1], cast[int]('/')))
+      #cs1 = cast[cstring](malloc(sizeof(char) * strlen(argv[1])))
+      s1 = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20)))
+      #s1 = cast[cstring](cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20))))
+      s2 = cast[cstring](strrchr(argv[1], '/'))
+      #s2 = cast[cstring](strrchr(argv[1], cast[int]('/')))
+      echo "Okay the seg fault is here!"
+      quit(0)
 
-      if s2[].addr != nil:
-        inc(s2[])
+      if s2.addr != nil:
+        #inc(s2[])
         discard strcpy(s1, s2)
       else:
         discard strcpy(s1, argv[1])
-      s2[] = strchr(cast[cstring](s1[]), cast[cint]('.'))
+      s2 = cast[cstring](strchr(s1, '.'))
 
+      echo "After the seg fault\n"
+      quit(0)
       if s2 != nil:
+        #extension = strdup(cs2)
         extension = strdup(s2)
-        s2[] = '\0'
+        s2 = cast[cstring]('\0')
       else:
         extension = strdup(empty_char)
+
+      echo "If you see me there the code above me have not seg fault else there is!"
+      quit(0)
 
       ##  Allocate for full file name
       fname = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + strlen(curdir) + 20)))
@@ -629,3 +651,36 @@ proc main*(argc: cint; argv: cstringArray): cint =
       printf("En_Total (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](tsec))
 
       return 0
+
+when isMainModule:
+      var args: seq[TaintedString] #string
+      args = commandLineParams()
+
+      # Our problem indexes from 1 which is the file to encode
+      # but one according to our commandline arguments is a different
+      # value. So insert at position 1 same as position 0
+      args.insert(args[0], 0)
+
+      if args.len() >= 1:
+            var source = allocCStringArray(args)
+
+            ### NOTE: our main function will acess the values from 1
+            # But if we try to access like this source[1] it is nill
+            # So attempt to place in source[1] the value of source[0]
+            if source[1] == nil:
+                source[1] = source[0]
+
+            #/home/s8software/index.html 3  2 reed_sol_van 8 0 0
+            #echo "At index  0 ", source[0]
+            #echo "At index  1 ", source[1]
+            #echo "At index  2 ", source[2]
+            #echo "At index  3 ", source[3]
+            #echo "At index  4 ", source[4]
+            #echo "At index  5 ", source[5]
+            #echo "At index  6 ", source[6]
+            #echo "At index  7 ", source[7]
+
+            discard main(cast[cint](args.len()), source)
+      else:
+          echo "usage: inputfile"
+          echo "eg  ./encode  /home/s8software/index.html 3  2 reed_sol_van 8 0 0"
