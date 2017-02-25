@@ -82,9 +82,10 @@ template `-`[T](a: ptr T, b: int): ptr T = `+`(a, -b)
 
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 proc strrchr*(str: cstring; c: char): char {.header: "<stdio.h>", importc:"strrchr"}
-proc strcpy*(dest: cstring; src: cstring): char {.header: "<string.h>", importc:"strcpy"}
-proc strchr*(s: cstring; c: char): char {.header: "<string.h>", importc:"strchr"}
-proc strdup*(s: cstring): ptr char {.header: "<string.h>", importc:"strdup"}
+#proc strcpy*(dest: cstring; src: cstring): char {.header: "<string.h>", importc:"strcpy"}
+proc strcpy*(dest: ptr cstring; src: ptr cstring): cstring {.header: "<string.h>", importc:"strcpy"}
+proc strchr*(s: ptr cstring; c: char): char {.header: "<string.h>", importc:"strchr"}
+proc strdup*(s: ptr cstring): ptr char {.header: "<string.h>", importc:"strdup"}
 proc strlen*(s: cstring): csize {.header: "<string.h>", importc:"strlen"}
 proc malloc*(size: csize): pointer {.header: "<stdlib.h>", importc:"malloc"}
 proc sprintf*(str: cstring; format: cstring): cint {.header:"<stdio.h>", importc:"sprintf",varargs.}
@@ -162,7 +163,9 @@ proc is_prime*(w: cint): cint =
   assert(false)
 
 proc jfread*(`ptr`: pointer; size: cint; nmembers: cint; stream: ptr FILE): csize =
+  #echo "Some oneis calling me"
   if stream != nil:
+      #echo "Even me am fine"
       return fread(`ptr`, cast[cint](size), cast[cint](nmembers), stream)
 
   MOA_Fill_Random_Region(`ptr`, size)
@@ -176,7 +179,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
         fp2: ptr FILE
 
       ##  padding file
-      var `block`: pointer
+      var `block`: cstring
       var block_tmp_handler: cstring # Shall use to tmprary save the return value and then assign to block
 
       ##  size of file and temp size
@@ -217,7 +220,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       var
         s1: cstring
         s2: cstring
-        empty_char: ptr char
+        empty_char: cstring = ""
         extension: cstring
 
       var fname: cstring
@@ -445,8 +448,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
         # Temporary save the return value and then
         # pass the pointer to our block variable
-        block_tmp_handler = cast[cstring](malloc(sizeof(char) * buffersize))
-        `block` = addr(block_tmp_handler)
+        `block` = cast[cstring](malloc(sizeof(char) * buffersize))
+        #`block` = addr(block_tmp_handler)
 
         blocksize = buffersize div k
 
@@ -456,8 +459,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
         # Temporary save the turn value and then
         # pass the pointer to our block variable.
-        block_tmp_handler = cast[cstring](malloc(sizeof(char) * newsize))
-        `block` = addr(block_tmp_handler)
+        `block` = cast[cstring](malloc(sizeof(char) * newsize))
+        #`block` = addr(block_tmp_handler)
 
       #echo "If you see this message then the Seg fault is belof this line"
       ##  Break inputfile name into the filename and extension
@@ -466,30 +469,34 @@ proc main*(argc: cint; argv: cstringArray): cint =
       #s1 = cast[cstring](cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20))))
       s2 = cast[cstring](strrchr(argv[1], '/'))
       #s2 = cast[cstring](strrchr(argv[1], cast[int]('/')))
-      echo "Okay the seg fault is here!"
-      quit(0)
+      #echo "Okay the seg fault is here!"
+      #quit(0)
 
       if s2.addr != nil:
         #inc(s2[])
-        discard strcpy(s1, s2)
+        discard strcpy(addr(s1), addr(s2))
+        #echo "Seg fault"
       else:
-        discard strcpy(s1, argv[1])
-      s2 = cast[cstring](strchr(s1, '.'))
+        discard strcpy(addr(s1), addr(argv[1]))
+        #echo "Seg fault 3"
 
-      echo "After the seg fault\n"
-      quit(0)
+      #echo "Segfault during this thing!"
+      s2 = cast[cstring](strchr(addr(s1), '.'))
+      #echo "This means there is no segfault"
+
       if s2 != nil:
         #extension = strdup(cs2)
-        extension = strdup(s2)
+        #echo "Segfault in here!"
+        extension = strdup(addr(s2))
         s2 = cast[cstring]('\0')
+        #echo "After segfult "
       else:
-        extension = strdup(empty_char)
-
-      echo "If you see me there the code above me have not seg fault else there is!"
-      quit(0)
+          #echo "Seg fault in th else clause!"
+          extension = strdup(addr(empty_char))
 
       ##  Allocate for full file name
       fname = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + strlen(curdir) + 20)))
+      #fname = cast[cstring](malloc(sizeof(cast[cstring]((100 + strlen(argv[1]) + 20)))))
 
       discard sprintf(temp, "%d", k)
       md = cast[int32](strlen(temp))
@@ -536,23 +543,32 @@ proc main*(argc: cint; argv: cstringArray): cint =
       of RDP, EVENODD:
         assert(false)
 
+
       timing_set(addr(start))
       timing_set(addr(t4))
       inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
 
+
       ##  Read in data until finished
       n = 1
       total = 0
+      echo "N IS ", n
+      echo "Readins ", readins
 
       while n <= readins:
           ##  Check if padding is needed, if so, add appropriate
-          ## 		   number of zeros
+          ##  number of zeros
+          echo n
           if total < size and total + buffersize <= size:
+            #echo "Before the inc is made"
             inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+            #echo "After the first if statemetn!"
 
           elif total < size and total + buffersize > size:
+            #echo "Could the illegal storage come from  here"
             extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
             i = extra
+
             while i < buffersize:
               var tmp_char: char = '0'
               (`block`.addr + 1)[] = addr(tmp_char)
@@ -565,17 +581,23 @@ proc main*(argc: cint; argv: cstringArray): cint =
               (`block`.addr + i)[] = addr(tmp_char)
               inc(i)
 
+
           i = 0
           while i < k:
             data[i] = cast[cstring]((`block`.addr  + (i * blocksize))[])
             inc(i)
 
+          #echo "Okay we are in the code coding chamber thea bove should be fine!"
+
           timing_set(addr(t3))
           ##  Encode according to coding method
+          #echo "Were is thefailure coming from!"
+
           case tech
           of No_Coding:
             nil
           of Reed_Sol_Van:
+            #echo "it's reed Solomon codding problem!"
             jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
           of Reed_Sol_R6_Op:
             discard reed_sol_r6_encode(k, w, data, coding, blocksize)
@@ -591,8 +613,12 @@ proc main*(argc: cint; argv: cstringArray): cint =
             jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
           of RDP, EVENODD:
             assert(false)
+
+          echo "What about here "
           timing_set(addr(t4))
           ##  Write data and encoded data to k+m files
+
+          #echo "here is the sweet sport"
           i = 1
           while i <= k:
             if fp == nil:
@@ -656,12 +682,12 @@ when isMainModule:
       var args: seq[TaintedString] #string
       args = commandLineParams()
 
-      # Our problem indexes from 1 which is the file to encode
-      # but one according to our commandline arguments is a different
-      # value. So insert at position 1 same as position 0
-      args.insert(args[0], 0)
-
       if args.len() >= 1:
+            # Our problem indexes from 1 which is the file to encode
+            # but one according to our commandline arguments is a different
+            # value. So insert at position 1 same as position 0
+            args.insert(args[0], 0)
+
             var source = allocCStringArray(args)
 
             ### NOTE: our main function will acess the values from 1
