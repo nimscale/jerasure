@@ -552,43 +552,53 @@ proc main*(argc: cint; argv: cstringArray): cint =
       ##  Read in data until finished
       n = 1
       total = 0
-      echo "N IS ", n
-      echo "Readins ", readins
 
       while n <= readins:
           ##  Check if padding is needed, if so, add appropriate
           ##  number of zeros
-          echo n
+          #echo n
           if total < size and total + buffersize <= size:
-            #echo "Before the inc is made"
+            echo "Before the In first inc is made"
             inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
-            #echo "After the first if statemetn!"
+            echo "After the first if inc statemetn!"
 
           elif total < size and total + buffersize > size:
-            #echo "Could the illegal storage come from  here"
+            echo "Could the illegal storage come from  here"
             extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
             i = extra
-
+            echo ""
+            echo "Before the whileloop"
+            echo ""
             while i < buffersize:
               var tmp_char: char = '0'
               (`block`.addr + 1)[] = addr(tmp_char)
               inc(i)
+            echo "After the while looop in the inncer elif"
+            echo ""
 
           elif total == size:            ##  Set pointers to point to file data
+            echo "Second elif in total comparasion"
+            echo ""
             i = 0
             while i < buffersize:
               var tmp_char: char = '0'
               (`block`.addr + i)[] = addr(tmp_char)
               inc(i)
-
+            echo "After the while loop in the second one"
+            echo ""
+          #quit(0);
 
           i = 0
           while i < k:
-            data[i] = cast[cstring]((`block`.addr  + (i * blocksize))[])
+            echo "Okay we are in the neutral while lop after the second if elif elif"
+            data[i] = cast[cstring](`block`.addr  + (i * blocksize))
+            #cast[cstring](`block`.addr  + (i * blocksize))
             inc(i)
+          echo "We are quiting from htere"
+          quit(0)
 
           #echo "Okay we are in the code coding chamber thea bove should be fine!"
-
+          quit(0)
           timing_set(addr(t3))
           ##  Encode according to coding method
           #echo "Were is thefailure coming from!"
