@@ -209,8 +209,13 @@ proc main*(argc: cint; argv: cstringArray): cint =
       var extra: cint
 
       ##  Jerasure Arguments
-      var data: cstringArray
-      var coding: cstringArray
+      var data_nim_array:seq[string]
+      data_nim_array = @[]
+      var data = allocCStringArray(data_nim_array)
+
+      var coding_nim_array:seq[string]
+      coding_nim_array = @[]
+      var coding = allocCStringArray(coding_nim_array)
       var matrix: ptr cint
       var bitmatrix: ptr cint
       var schedule: ptr ptr cint
@@ -640,8 +645,16 @@ proc main*(argc: cint; argv: cstringArray): cint =
                   fp2 = fopen(fname, "wb")
                 else:
                   fp2 = fopen(fname, "ab")
-                discard fwrite(data[i - 1], sizeof(char), blocksize, fp2)
+
+                echo "FP2 ", repr(fp2)
+                echo "block size ", blocksize
+                echo "Size of ", sizeof(cstring)
+                echo data[i - 1]
+                echo " "
+                echo "We have quite"
+                discard fwrite(data[i - 1], sizeof(cstring), blocksize, fp2)
                 discard fclose(fp2)
+
             inc(i)
           i = 1
 
@@ -654,7 +667,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
                 fp2 = fopen(fname, "wb")
               else:
                 fp2 = fopen(fname, "ab")
-              discard fwrite(coding[i - 1], sizeof(char), blocksize, fp2)
+              discard fwrite(coding[i - 1], sizeof(cstring), blocksize, fp2)
               discard fclose(fp2)
             inc(i)
           inc(n)
@@ -677,15 +690,13 @@ proc main*(argc: cint; argv: cstringArray): cint =
       ##  Free allocated memory
       #free(s1)
       free(fname)
-      free(`block`)
+      #free(`block`)
       free(curdir)
 
       ##  Calculate rate in MB/sec and print
       timing_set(addr(t2))
       tsec = timing_delta((addr(t1)), (addr(t2)))
-      #echo cast[int32](1024.0) div cast[int32](totalsec)
-      echo "Size ", cast[int32](size)
-      #echo 10 div cast[int32](tsec)
+
       #printf("Encoding (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](totalsec))
       #printf("En_Total (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](tsec))
 
