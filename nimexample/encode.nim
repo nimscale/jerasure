@@ -81,13 +81,13 @@ template `-`[T](a: ptr T, b: int): ptr T = `+`(a, -b)
 
 
 proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
-proc strrchr*(str: cstring; c: char): char {.header: "<stdio.h>", importc:"strrchr"}
+proc strrchr*(str: cstring; c: char): ptr char {.header: "<stdio.h>", importc:"strrchr"}
 #proc strcpy*(dest: cstring; src: cstring): char {.header: "<string.h>", importc:"strcpy"}
 proc strcpy*(dest: ptr cstring; src: ptr cstring): cstring {.header: "<string.h>", importc:"strcpy"}
-proc strchr*(s: ptr cstring; c: char): char {.header: "<string.h>", importc:"strchr"}
-proc strdup*(s: ptr cstring): ptr char {.header: "<string.h>", importc:"strdup"}
+proc strchr*(str: cstring; c: char): ptr char {.header: "<stdio.h>", importc:"strchr"}
+proc strdup*(s: cstring): ptr char {.header: "<string.h>", importc:"strdup"}
 proc strlen*(s: cstring): csize {.header: "<string.h>", importc:"strlen"}
-proc malloc*(size: csize): pointer {.header: "<stdlib.h>", importc:"malloc"}
+proc malloc*(size: csize): ptr cstring {.header: "<stdlib.h>", importc:"malloc"}
 proc sprintf*(str: cstring; format: cstring): cint {.header:"<stdio.h>", importc:"sprintf",varargs.}
 proc fopen*(path: cstring; mode: cstring): ptr FILE {.header:"<stdio.h>", importc:"fopen"}
 proc fprintf*(stream: ptr FILE; format: cstring): cint {.header:"<stdio.h>", importc:"fprintf",varargs.}
@@ -103,6 +103,7 @@ proc strcmp*(s1: cstring; s2: cstring): cint {.header:"<string.h>", importc:"str
 proc getcwd*(buf: cstring; size: csize): cstring {.header:"<unistd.h>", importc:"getcwd"}
 proc mkdir*(path: cstring): cint {.header:"<sys/stat.h>", importc:"mkdir"}
 proc perror*(s: cstring) {.header:"<stdio.h>", importc:"perror"}
+proc get_current_dir_name*(): cstring {.header: "<unistd.h>", importc: "get_current_dir_name"}
 
 # The following mkdir we ommited the mode mode_t which required a stat defined
 # which we couln'd get. and we replaced with cstring
@@ -165,7 +166,7 @@ proc is_prime*(w: cint): cint =
 proc jfread*(`ptr`: pointer; size: cint; nmembers: cint; stream: ptr FILE): csize =
   #echo "Some oneis calling me"
   if stream != nil:
-      #echo "Even me am fine"
+      echo "Stream is ", repr(stream)
       return fread(`ptr`, cast[cint](size), cast[cint](nmembers), stream)
 
   MOA_Fill_Random_Region(`ptr`, size)
@@ -179,7 +180,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
         fp2: ptr FILE
 
       ##  padding file
-      var `block`: cstring
+      var `block`: ptr cstring
       var block_tmp_handler: cstring # Shall use to tmprary save the return value and then assign to block
 
       ##  size of file and temp size
@@ -243,6 +244,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       var
         up: cint
         down: cint
+        tmp_sprintf:cint
 
       # This is not implement in decode.nim
       ## signal(SIGQUIT, ctrl_bs_handler)
@@ -395,24 +397,32 @@ proc main*(argc: cint; argv: cstringArray): cint =
       `method` = tech
 
       ##  Get current working directory for construction of file names
-      curdir = cast[cstring](malloc(sizeof(char) * 1000))
-      assert(curdir == getcwd(curdir, 1000))
+      #curdir = cast[cstring](malloc(sizeof(char) * 1000))
+      #assert(curdir == getcwd(curdir, 1000))
+      curdir = get_current_dir_name()
 
       if argv[1][0] != '-':
           ##  Open file and error check
+          #echo "File opening in the file elif ", argv[1]
           fp = fopen(argv[1], "rb")
+          #echo "FP IS ", repr(fp)
           if fp == nil:
             write(stderr, "Unable to open file.\x0A")
             quit(0)
 
-          i = mkdir("Coding", coding_dir_mode)
+          else:
+              #echo "File successfuly opened!"
+              #echo "FP IT IS ", repr(fp)
 
-          if i == -1:
-              write(stderr, "Unable to create Coding directory. It already exists\n")
-              quit(0)
+              i = mkdir("Coding", coding_dir_mode)
 
-          discard stat(argv[1], addr(status))
-          size = cast[int32](status.st_size)
+              if i == -1:
+                  write(stderr, "Unable to create Coding directory. It already exists\n")
+                  quit(0)
+
+              discard stat(argv[1], addr(status))
+              size = cast[int32](status.st_size)
+              #echo "AGAIN FP IS ALIVE ", repr(fp)
 
       else:
           if sscanf((argv[1].addr + 1)[], "%d", addr(size)) != 1 or size <= 0:
@@ -420,7 +430,6 @@ proc main*(argc: cint; argv: cstringArray): cint =
             quit(1)
           fp = nil
           #MOA_Seed(time(0))
-
       newsize = size
 
       ##  Find new size by determining next closest multiple
@@ -448,7 +457,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
         # Temporary save the return value and then
         # pass the pointer to our block variable
-        `block` = cast[cstring](malloc(sizeof(char) * buffersize))
+        `block` = malloc(sizeof(cstring) * buffersize)
+        echo "Block size ", repr(`block`)
         #`block` = addr(block_tmp_handler)
 
         blocksize = buffersize div k
@@ -459,49 +469,45 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
         # Temporary save the turn value and then
         # pass the pointer to our block variable.
-        `block` = cast[cstring](malloc(sizeof(char) * newsize))
+        #echo "NEw size ", newsize
+        #echo "Size cstring ", sizeof(cstring)
+        `block` = malloc(sizeof(cstring) * newsize)
+        #echo "OR block ", repr(`block`)
         #`block` = addr(block_tmp_handler)
 
       #echo "If you see this message then the Seg fault is belof this line"
       ##  Break inputfile name into the filename and extension
       #cs1 = cast[cstring](malloc(sizeof(char) * strlen(argv[1])))
-      s1 = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20)))
+      s1 = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + 20)))
+
       #s1 = cast[cstring](cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20))))
       s2 = cast[cstring](strrchr(argv[1], '/'))
-      #s2 = cast[cstring](strrchr(argv[1], cast[int]('/')))
-      #echo "Okay the seg fault is here!"
-      #quit(0)
 
       if s2.addr != nil:
-        #inc(s2[])
         discard strcpy(addr(s1), addr(s2))
-        #echo "Seg fault"
       else:
         discard strcpy(addr(s1), addr(argv[1]))
-        #echo "Seg fault 3"
 
-      #echo "Segfault during this thing!"
-      s2 = cast[cstring](strchr(addr(s1), '.'))
-      #echo "This means there is no segfault"
+      s2 = strchr(s1, '.')
 
       if s2 != nil:
         #extension = strdup(cs2)
         #echo "Segfault in here!"
-        extension = strdup(addr(s2))
-        s2 = cast[cstring]('\0')
+        extension = strdup(s2)
+        s2 = cast[cstring]("\0")
         #echo "After segfult "
       else:
           #echo "Seg fault in th else clause!"
-          extension = strdup(addr(empty_char))
-
-      ##  Allocate for full file name
-      fname = cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + strlen(curdir) + 20)))
-      #fname = cast[cstring](malloc(sizeof(cast[cstring]((100 + strlen(argv[1]) + 20)))))
+          extension = strdup(empty_char)
 
       discard sprintf(temp, "%d", k)
-      md = cast[int32](strlen(temp))
-      ##  Allocate data and coding
 
+      ##  Allocate for full file name
+      fname = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + strlen(curdir) + 20)))
+
+      md = cast[int32](strlen(temp))
+
+      ##  Allocate data and coding
       data = cast[cstringArray](malloc(sizeof(cast[cstring](k))))
       coding = cast[cstringArray](malloc(sizeof(cast[cstring](m))))
 
@@ -552,109 +558,103 @@ proc main*(argc: cint; argv: cstringArray): cint =
       ##  Read in data until finished
       n = 1
       total = 0
+      var ffname: cstring
+      ffname = cast[cstring] (malloc( sizeof(cstring) * (100 + 100 + 400)))
 
       while n <= readins:
           ##  Check if padding is needed, if so, add appropriate
           ##  number of zeros
-          #echo n
           if total < size and total + buffersize <= size:
-            echo "Before the In first inc is made"
-            inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
-            echo "After the first if inc statemetn!"
+            inc(total, jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
 
           elif total < size and total + buffersize > size:
-            echo "Could the illegal storage come from  here"
-            extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+            extra = cast[cint](jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
             i = extra
-            echo ""
-            echo "Before the whileloop"
-            echo ""
+
             while i < buffersize:
-              var tmp_char: char = '0'
+              var tmp_char: cstring = "0"
               (`block`.addr + 1)[] = addr(tmp_char)
               inc(i)
-            echo "After the while looop in the inncer elif"
-            echo ""
 
-          elif total == size:            ##  Set pointers to point to file data
-            echo "Second elif in total comparasion"
-            echo ""
+          elif total == size: ##  Set pointers to point to file data
             i = 0
             while i < buffersize:
-              var tmp_char: char = '0'
+              var tmp_char: cstring = "0"
               (`block`.addr + i)[] = addr(tmp_char)
               inc(i)
-            echo "After the while loop in the second one"
-            echo ""
-          #quit(0);
 
           i = 0
+          ## Set a pointer to point to the file data
           while i < k:
-            echo "Okay we are in the neutral while lop after the second if elif elif"
             data[i] = cast[cstring](`block`.addr  + (i * blocksize))
             #cast[cstring](`block`.addr  + (i * blocksize))
             inc(i)
-          echo "We are quiting from htere"
-          quit(0)
 
           #echo "Okay we are in the code coding chamber thea bove should be fine!"
-          quit(0)
           timing_set(addr(t3))
           ##  Encode according to coding method
-          #echo "Were is thefailure coming from!"
-
-          case tech
-          of No_Coding:
+          #echo "Tracking segmentation fault"
+          #case tech
+          if(No_Coding == tech):
             nil
-          of Reed_Sol_Van:
-            #echo "it's reed Solomon codding problem!"
-            jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
-          of Reed_Sol_R6_Op:
-            discard reed_sol_r6_encode(k, w, data, coding, blocksize)
-          of Cauchy_Orig:
-            jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
-          of Cauchy_Good:
-            jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
-          of Liberation:
-            jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
-          of Blaum_Roth:
-            jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
-          of Liber8tion:
-            jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
-          of RDP, EVENODD:
-            assert(false)
+          #of No_Coding:
+            nil
+          elif( Reed_Sol_Van == tech):
+            echo "it's reed Solomon codding problem!"
+            #jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
 
-          echo "What about here "
+          elif (Reed_Sol_R6_Op == tech):
+              echo "RED sold 5"
+              #discard reed_sol_r6_encode(k, w, data, coding, blocksize)
+          elif (Cauchy_Orig == tech):
+              jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
+          elif (Cauchy_Good == tech):
+              jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
+          elif( Liberation == tech):
+              jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
+          elif(Blaum_Roth == tech):
+              jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
+          elif (Liber8tion == tech):
+              jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
+          elif (RDP == tech):
+              assert(false)
+          elif(EVENODD == tech):
+              assert(false)
+
+          #echo "What about here "
           timing_set(addr(t4))
-          ##  Write data and encoded data to k+m files
 
+          ##  Write data and encoded data to k+m files
           #echo "here is the sweet sport"
           i = 1
+
           while i <= k:
             if fp == nil:
-              zeroMem(data[i - 1], blocksize)
+              zeroMem(addr(data[i - 1]), blocksize)
 
             else:
-              discard sprintf(fname, "%s/Coding/%s_k%0*d%s", curdir, s1, md, i, extension)
-              if n == 1:
-                fp2 = fopen(fname, "wb")
-              else:
-                fp2 = fopen(fname, "ab")
-              discard fwrite(data[i - 1], sizeof((char)), blocksize, fp2)
-              discard fclose(fp2)
+                tmp_sprintf =  sprintf(fname, "%s/Coding%s_k%0*d%s", curdir, s1, md, i, extension)
+                echo fname
+
+                if n == 1:
+                  fp2 = fopen(fname, "wb")
+                else:
+                  fp2 = fopen(fname, "ab")
+                discard fwrite(data[i - 1], sizeof(char), blocksize, fp2)
+                discard fclose(fp2)
             inc(i)
           i = 1
 
           while i <= m:
             if fp == nil:
-              zeroMem(data[i - 1], blocksize)
+              zeroMem(addr(data[i - 1]), blocksize)
             else:
               discard sprintf(fname, "%s/Coding/%s_m%0*d%s", curdir, s1, md, i, extension)
               if n == 1:
                 fp2 = fopen(fname, "wb")
               else:
                 fp2 = fopen(fname, "ab")
-              discard fwrite(coding[i - 1], sizeof((char)), blocksize, fp2)
+              discard fwrite(coding[i - 1], sizeof(char), blocksize, fp2)
               discard fclose(fp2)
             inc(i)
           inc(n)
@@ -675,7 +675,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
         discard fclose(fp2)
 
       ##  Free allocated memory
-      free(s1)
+      #free(s1)
       free(fname)
       free(`block`)
       free(curdir)
@@ -683,8 +683,11 @@ proc main*(argc: cint; argv: cstringArray): cint =
       ##  Calculate rate in MB/sec and print
       timing_set(addr(t2))
       tsec = timing_delta((addr(t1)), (addr(t2)))
-      printf("Encoding (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](totalsec))
-      printf("En_Total (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](tsec))
+      #echo cast[int32](1024.0) div cast[int32](totalsec)
+      echo "Size ", cast[int32](size)
+      #echo 10 div cast[int32](tsec)
+      #printf("Encoding (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](totalsec))
+      #printf("En_Total (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](tsec))
 
       return 0
 

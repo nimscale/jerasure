@@ -207,11 +207,12 @@ proc main*(argc: cint; argv: cstringArray): cint =
     #echo "BEFORE MALLOCK ", fname
     #fname = cast[cstring](malloc(sizeof(cast[cstring]((10000 + strlen(argv[1]) + 400)))))
     fname = cast[cstring] (malloc( sizeof(cstring) * (100 + strlen(argv[1]) + 400)))
+    echo "FNAME IS ", fname
     #echo "AFTER MALLOCK BEFORE SPTINTF ", fname
     ##  Read in parameters from metadata file
     tmp_sprintf =  sprintf(fname, "%s/Coding%s_meta.txt\n", curdir, cs1)
 
-    #echo "AFTER MALLOCK ", fname
+    echo "AFTER MALLOCK ", fname
     #echo tmp_sprintf
     fp = fopen(fname, "rb")
     #echo "If we reach here then all if fine"
