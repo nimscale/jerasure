@@ -163,24 +163,27 @@ proc is_prime*(w: cint): cint =
     inc(i)
   assert(false)
 
+proc j_matrix_encode*(k: cint; m: cint; w: cint; matrix: ptr cint; data_ptrs: cstringArray; coding_ptrs: cstringArray; size: cint): cint =
+    return 12
+
 proc jfread*(`ptr`: pointer; size: cint; nmembers: cint; stream: ptr FILE): csize =
   #echo "Some oneis calling me"
   if stream != nil:
-      echo "Stream is ", repr(stream)
       return fread(`ptr`, cast[cint](size), cast[cint](nmembers), stream)
 
   MOA_Fill_Random_Region(`ptr`, size)
   return size
 
 
-proc main*(argc: cint; argv: cstringArray): cint =
+proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       ##  file pointers
       var
         fp: ptr FILE
         fp2: ptr FILE
+        fileinfo:FileInfo # For nim
 
       ##  padding file
-      var `block`: ptr cstring
+      var `block`: cstring
       var block_tmp_handler: cstring # Shall use to tmprary save the return value and then assign to block
 
       ##  size of file and temp size
@@ -216,6 +219,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       var coding_nim_array:seq[string]
       coding_nim_array = @[]
       var coding = allocCStringArray(coding_nim_array)
+
       var matrix: ptr cint
       var bitmatrix: ptr cint
       var schedule: ptr ptr cint
@@ -250,6 +254,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
         up: cint
         down: cint
         tmp_sprintf:cint
+        stat_cint:cint
 
       # This is not implement in decode.nim
       ## signal(SIGQUIT, ctrl_bs_handler)
@@ -416,23 +421,20 @@ proc main*(argc: cint; argv: cstringArray): cint =
             quit(0)
 
           else:
-              #echo "File successfuly opened!"
-              #echo "FP IT IS ", repr(fp)
 
               i = mkdir("Coding", coding_dir_mode)
-
               if i == -1:
                   write(stderr, "Unable to create Coding directory. It already exists\n")
                   quit(0)
 
-              discard stat(argv[1], addr(status))
-              size = cast[int32](status.st_size)
-              #echo "AGAIN FP IS ALIVE ", repr(fp)
+              fileinfo =  getFileInfo(file_path, true)
+              size = cast[int32](fileinfo.size)
 
       else:
           if sscanf((argv[1].addr + 1)[], "%d", addr(size)) != 1 or size <= 0:
             write(stderr, "Files starting with \'-\' should be sizes for randomly created input\x0A")
             quit(1)
+          echo "Making fp into null"
           fp = nil
           #MOA_Seed(time(0))
       newsize = size
@@ -462,9 +464,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
         # Temporary save the return value and then
         # pass the pointer to our block variable
-        `block` = malloc(sizeof(cstring) * buffersize)
-        echo "Block size ", repr(`block`)
-        #`block` = addr(block_tmp_handler)
+        `block` = cast[cstring](malloc(sizeof(cstring) * buffersize))
 
         blocksize = buffersize div k
 
@@ -472,16 +472,8 @@ proc main*(argc: cint; argv: cstringArray): cint =
         readins = 1
         buffersize = size
 
-        # Temporary save the turn value and then
-        # pass the pointer to our block variable.
-        #echo "NEw size ", newsize
-        #echo "Size cstring ", sizeof(cstring)
-        `block` = malloc(sizeof(cstring) * newsize)
-        #echo "OR block ", repr(`block`)
-        #`block` = addr(block_tmp_handler)
+        `block` = cast[cstring](malloc(sizeof(cstring) * newsize))
 
-      #echo "If you see this message then the Seg fault is belof this line"
-      ##  Break inputfile name into the filename and extension
       #cs1 = cast[cstring](malloc(sizeof(char) * strlen(argv[1])))
       s1 = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + 20)))
 
@@ -493,6 +485,9 @@ proc main*(argc: cint; argv: cstringArray): cint =
       else:
         discard strcpy(addr(s1), addr(argv[1]))
 
+      #echo "S1 ", s1
+      #echo "S2 ", s2
+      # ILLegal storage bug
       s2 = strchr(s1, '.')
 
       if s2 != nil:
@@ -513,15 +508,18 @@ proc main*(argc: cint; argv: cstringArray): cint =
       md = cast[int32](strlen(temp))
 
       ##  Allocate data and coding
-      data = cast[cstringArray](malloc(sizeof(cast[cstring](k))))
-      coding = cast[cstringArray](malloc(sizeof(cast[cstring](m))))
+      #data = cast[cstringArray](malloc(sizeof(cast[cstring](k * 1000))))
+      #coding = cast[cstringArray](malloc(sizeof(cast[cstring](m * 1000))))
 
       i = 0
+     # echo "M IS ", m
       while i < m:
-        coding[i] = cast[cstring](malloc(sizeof(char) * blocksize))
+        coding[i] = cast[cstring](malloc(sizeof(cstring) * blocksize))
+
         if coding[i] == nil:
           perror("malloc")
           quit(1)
+
         inc(i)
 
       ##  Create coding matrix or bitmatrix and schedule
@@ -570,46 +568,48 @@ proc main*(argc: cint; argv: cstringArray): cint =
           ##  Check if padding is needed, if so, add appropriate
           ##  number of zeros
           if total < size and total + buffersize <= size:
-            inc(total, jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
+            inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
 
           elif total < size and total + buffersize > size:
-            extra = cast[cint](jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
+            extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+
             i = extra
 
             while i < buffersize:
               var tmp_char: cstring = "0"
-              (`block`.addr + 1)[] = addr(tmp_char)
+              (`block`.addr + 1)[] = tmp_char
               inc(i)
 
           elif total == size: ##  Set pointers to point to file data
             i = 0
             while i < buffersize:
               var tmp_char: cstring = "0"
-              (`block`.addr + i)[] = addr(tmp_char)
+              (`block`.addr + i)[] = tmp_char
               inc(i)
 
           i = 0
           ## Set a pointer to point to the file data
           while i < k:
             data[i] = cast[cstring](`block`.addr  + (i * blocksize))
-            #cast[cstring](`block`.addr  + (i * blocksize))
             inc(i)
 
-          #echo "Okay we are in the code coding chamber thea bove should be fine!"
           timing_set(addr(t3))
           ##  Encode according to coding method
-          #echo "Tracking segmentation fault"
-          #case tech
           if(No_Coding == tech):
             nil
-          #of No_Coding:
-            nil
           elif( Reed_Sol_Van == tech):
-            echo "it's reed Solomon codding problem!"
-            #jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
+             echo "K ", k
+             echo "M ", m
+             echo "W ", w
+             echo "Matrix ", matrix[]
+             #echo "Data ", data[0]
+             #echo "Coding ", coding[0]
+             #echo "Blocksize ", blocksize
+
+             jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
 
           elif (Reed_Sol_R6_Op == tech):
-              echo "RED sold 5"
+              echo " "
               #discard reed_sol_r6_encode(k, w, data, coding, blocksize)
           elif (Cauchy_Orig == tech):
               jerasure_schedule_encode(k, m, w, schedule, data, coding, blocksize, packetsize)
@@ -639,21 +639,24 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
             else:
                 tmp_sprintf =  sprintf(fname, "%s/Coding%s_k%0*d%s", curdir, s1, md, i, extension)
-                echo fname
+                #echo fname
 
                 if n == 1:
                   fp2 = fopen(fname, "wb")
                 else:
                   fp2 = fopen(fname, "ab")
 
-                echo "FP2 ", repr(fp2)
-                echo "block size ", blocksize
-                echo "Size of ", sizeof(cstring)
-                echo data[i - 1]
-                echo " "
-                echo "We have quite"
-                discard fwrite(data[i - 1], sizeof(cstring), blocksize, fp2)
-                discard fclose(fp2)
+                #echo "FP2 ", repr(fp2)
+                #echo "block size ", blocksize
+                #echo "Size of ", sizeof(cstring)
+                #echo " "
+                if( data[i] == nil):
+                    echo "It is nil"
+                else:
+                   #(`block`.addr + i)[]
+                   #echo "II IS ", i
+                   discard fwrite(data[i - 1], sizeof(cstring), blocksize, fp2)
+                   discard fclose(fp2)
 
             inc(i)
           i = 1
@@ -677,28 +680,39 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
       ##  Create metadata file
       if fp != nil:
-        discard sprintf(fname, "%s/Coding/%s_meta.txt", curdir, s1)
-        fp2 = fopen(fname, "wb")
-        discard fprintf(fp2, "%s\x0A", argv[1])
-        discard fprintf(fp2, "%d\x0A", size)
-        discard fprintf(fp2, "%d %d %d %d %d\x0A", k, m, w, packetsize, buffersize)
-        discard fprintf(fp2, "%s\x0A", argv[4])
-        discard fprintf(fp2, "%d\x0A", tech)
-        discard fprintf(fp2, "%d\x0A", readins)
-        discard fclose(fp2)
+          discard sprintf(fname, "%s/Coding/%s_meta.txt", curdir, s1)
+          fp2 = fopen(fname, "wb")
+          discard fprintf(fp2, "%s\x0A", argv[1])
+          discard fprintf(fp2, "%d\x0A", size)
+          discard fprintf(fp2, "%d %d %d %d %d\x0A", k, m, w, packetsize, buffersize)
+          discard fprintf(fp2, "%s\x0A", argv[4])
+          discard fprintf(fp2, "%d\x0A", tech)
+          discard fprintf(fp2, "%d\x0A", readins)
+          discard fclose(fp2)
 
       ##  Free allocated memory
       #free(s1)
       free(fname)
       #free(`block`)
       free(curdir)
-
       ##  Calculate rate in MB/sec and print
       timing_set(addr(t2))
       tsec = timing_delta((addr(t1)), (addr(t2)))
 
-      #printf("Encoding (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](totalsec))
-      #printf("En_Total (MB/sec): %0.10f\x0A", ((cast[int32](size)) div cast[int32](1024.0) div cast[int32](1024.0)) div cast[int32](tsec))
+      echo ""
+      echo "------------------------"
+      echo " Total Sec ", totalsec
+      echo " Tsec ", tsec
+      echo "------------------------"
+      echo ""
+
+      echo "Timing ----------------------May not be accurate if all values are 0.0000-----------------------------"
+      echo ""
+      printf(" Encoding (MB/sec): %0.10f\x0A", (cast[uint](size) div 1024 div 1024) div cast[uint](totalsec))
+      printf(" En_Total (MB/sec): %0.10f\x0A", (cast[uint](size) div 1024 div 1024) div cast[uint](tsec))
+      echo ""
+      echo "Formula was:----------- (cast[uint](size) div 1024 div 1024) div cast[uint](tsec)) --------------"
+      echo ""
 
       return 0
 
@@ -722,15 +736,18 @@ when isMainModule:
 
             #/home/s8software/index.html 3  2 reed_sol_van 8 0 0
             #echo "At index  0 ", source[0]
-            #echo "At index  1 ", source[1]
+            #echo "At index  1 ", args[1]
             #echo "At index  2 ", source[2]
             #echo "At index  3 ", source[3]
             #echo "At index  4 ", source[4]
             #echo "At index  5 ", source[5]
             #echo "At index  6 ", source[6]
             #echo "At index  7 ", source[7]
+            #var fileinfo:FileInfo # For nim
 
-            discard main(cast[cint](args.len()), source)
+            #fileinfo = getFileInfo(args[1])
+            #echo fileinfo.size
+            discard main(cast[cint](args.len()), args[1], source)
       else:
           echo "usage: inputfile"
           echo "eg  ./encode  /home/s8software/index.html 3  2 reed_sol_van 8 0 0"
