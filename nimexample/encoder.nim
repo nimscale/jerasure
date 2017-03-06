@@ -86,7 +86,7 @@ proc strrchr*(str: cstring; c: char): ptr char {.header: "<stdio.h>", importc:"s
 proc strcpy*(dest: ptr cstring; src: ptr cstring): cstring {.header: "<string.h>", importc:"strcpy"}
 proc strchr*(str: cstring; c: char): ptr char {.header: "<stdio.h>", importc:"strchr"}
 proc strdup*(s: cstring): ptr char {.header: "<string.h>", importc:"strdup"}
-proc strlen*(s: cstring): csize {.header: "<string.h>", importc:"strlen"}
+proc strlen*(s: cstring): int32 {.header: "<string.h>", importc:"strlen"}
 proc malloc*(size: csize): ptr cstring {.header: "<stdlib.h>", importc:"malloc"}
 proc sprintf*(str: cstring; format: cstring): cint {.header:"<stdio.h>", importc:"sprintf",varargs.}
 proc fopen*(path: cstring; mode: cstring): ptr FILE {.header:"<stdio.h>", importc:"fopen"}
@@ -104,6 +104,7 @@ proc getcwd*(buf: cstring; size: csize): cstring {.header:"<unistd.h>", importc:
 proc mkdir*(path: cstring): cint {.header:"<sys/stat.h>", importc:"mkdir"}
 proc perror*(s: cstring) {.header:"<stdio.h>", importc:"perror"}
 proc get_current_dir_name*(): cstring {.header: "<unistd.h>", importc: "get_current_dir_name"}
+proc time*(tloc: int): float {.header: "<time.h>", importc: "time"}
 
 # The following mkdir we ommited the mode mode_t which required a stat defined
 # which we couln'd get. and we replaced with cstring
@@ -183,7 +184,11 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
         fileinfo:FileInfo # For nim
 
       ##  padding file
-      var `block`: cstring
+      #var `block`: cstring
+      var blockc:seq[string]
+      blockc = @[]
+      var `block` = allocCStringArray(blockc)
+
       var block_tmp_handler: cstring # Shall use to tmprary save the return value and then assign to block
 
       ##  size of file and temp size
@@ -234,7 +239,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
         extension: cstring
 
       var fname: cstring
-      var md: cint
+      var md: int32
       var curdir: cstring
 
       ##  Timing variables
@@ -249,7 +254,6 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       var start: timing
 
       ##  Find buffersize
-
       var
         up: cint
         down: cint
@@ -289,35 +293,53 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
         write(stderr, "Invalid value for w\n")
         quit(0)
 
+      if( argc == 6):
+          packetsize = 0
+      else:
+          if(sscanf(argv[6], "%d", addr(packetsize)) == 0 or packetsize < 0 ):
+              write(stderr, "Invalid value for packetsize.\n")
+              quit(0)
+
+      if(argc != 8):
+          buffersize = 0
+      else:
+          if(sscanf(argv[7], "%d", addr(buffersize)) == 0 or buffersize < 0 ):
+              write(stderr, "Invalid value for buffersize\n")
+
       ##  Determine proper buffersize by finding the closest valid buffersize to the input value
       if buffersize != 0:
-        if packetsize != 0 and
-            buffersize mod (sizeof(clong) * w * k * packetsize) != 0:
-          up = buffersize
-          down = buffersize
+          echo "Buffer is not quel to zero, buffersize ", buffersize
+          quit(0)
 
-          while up mod (sizeof(clong) * w * k * packetsize) != 0 and
-              (down mod (sizeof(clong) * w * k * packetsize) != 0):
-            inc(up)
-            if down == 0:
-              dec(down)
-          if up mod (sizeof(clong) * w * k * packetsize) == 0:
-            buffersize = up
-          else:
-            if down != 0:
-              buffersize = down
+          if packetsize != 0 and buffersize mod (sizeof(clong) * w * k * packetsize) != 0:
+              up = buffersize
+              down = buffersize
 
-        elif packetsize == 0 and buffersize mod (sizeof(clong) * w * k) != 0:
-          up = buffersize
-          down = buffersize
-          while up mod (sizeof(clong) * w * k) != 0 and
-              down mod (sizeof(clong) * w * k) != 0:
-            inc(up)
-            dec(down)
-          if up mod (sizeof(clong) * w * k) == 0:
-            buffersize = up
-          else:
-            buffersize = down
+              while up mod (sizeof(clong) * w * k * packetsize) != 0 and (down mod (sizeof(clong) * w * k * packetsize) != 0):
+                  inc(up)
+                  if down == 0:
+                    dec(down)
+
+              if up mod (sizeof(clong) * w * k * packetsize) == 0:
+                  buffersize = up
+              else:
+                  if down != 0:
+                      buffersize = down
+
+          elif packetsize == 0 and buffersize mod (sizeof(clong) * w * k) != 0:
+              up = buffersize
+              down = buffersize
+
+              while up mod (sizeof(clong) * w * k) != 0 and down mod (sizeof(clong) * w * k) != 0:
+                inc(up)
+                dec(down)
+
+              if up mod (sizeof(clong) * w * k) == 0:
+                buffersize = up
+              else:
+                buffersize = down
+      else:
+          echo "DEBUG::: Buffer size is ", buffersize
 
       ##  Setting of coding technique and error checking
       if strcmp(argv[4], "no_coding") == 0:
@@ -325,6 +347,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
 
       elif strcmp(argv[4], "reed_sol_van") == 0:
         tech = Reed_Sol_Van
+
         if w != 8 and w != 16 and w != 32:
             write(stderr, "w must be one of {8, 16, 32}\n")
             quit(0)
@@ -361,6 +384,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
         if (packetsize mod (sizeof(clong))) != 0:
           write(stderr, "packetsize must be a multiple of sizeof(long)\n")
           quit(0)
+
         tech = Liberation
 
       elif strcmp(argv[4], "blaum_roth") == 0:
@@ -379,6 +403,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           if (packetsize mod (sizeof((clong)))) != 0:
             write(stderr, "packetsize must be a multiple of sizeof(long)\n")
             quit(0)
+
           tech = Blaum_Roth
 
       elif strcmp(argv[4], "liber8tion") == 0:
@@ -397,6 +422,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           if k > w:
             write(stderr, "k must be less than or equal to w\n")
             quit(0)
+
           tech = Liber8tion
 
       else:
@@ -412,19 +438,18 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       curdir = get_current_dir_name()
 
       if argv[1][0] != '-':
+
           ##  Open file and error check
-          #echo "File opening in the file elif ", argv[1]
           fp = fopen(argv[1], "rb")
-          #echo "FP IS ", repr(fp)
           if fp == nil:
-            write(stderr, "Unable to open file.\x0A")
+            write(stderr, "Unable to open file.\n")
             quit(0)
 
           else:
 
               i = mkdir("Coding", coding_dir_mode)
               if i == -1:
-                  write(stderr, "Unable to create Coding directory. It already exists\n")
+                  write(stderr, "Unable to create Coding directory. Check if it exists\n")
                   quit(0)
 
               fileinfo =  getFileInfo(file_path, true)
@@ -434,20 +459,25 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           if sscanf((argv[1].addr + 1)[], "%d", addr(size)) != 1 or size <= 0:
             write(stderr, "Files starting with \'-\' should be sizes for randomly created input\x0A")
             quit(1)
-          echo "Making fp into null"
+
           fp = nil
-          #MOA_Seed(time(0))
+          MOA_Seed(cast[uint32](time(0)))
+
       newsize = size
 
       ##  Find new size by determining next closest multiple
       if packetsize != 0:
-        if size mod (k * w * packetsize * sizeof(clong)) != 0:
-          while newsize mod (k * w * packetsize * sizeof(clong)) != 0:
-              inc(newsize)
+          echo "Packet size is not zero"
+          if size mod (k * w * packetsize * sizeof(clong)) != 0:
+              while newsize mod (k * w * packetsize * sizeof(clong)) != 0:
+                  inc(newsize)
       else:
-        if size mod (k * w * sizeof(clong)) != 0:
-          while newsize mod (k * w * sizeof(clong)) != 0:
-              inc(newsize)
+          echo "DEBUG::: Packet size is ", packetsize
+
+          if size mod (k * w * sizeof(clong)) != 0:
+              while newsize mod (k * w * sizeof(clong)) != 0:
+                  inc(newsize)
+
       if buffersize != 0:
         while newsize mod buffersize != 0:
           inc(newsize)
@@ -457,27 +487,20 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
 
       ##  Allow for buffersize and determine number of read-ins
       if size > buffersize and buffersize != 0:
-        if newsize mod buffersize != 0:
-           readins = newsize div buffersize
-        else:
-           readins = newsize div buffersize
+          if newsize mod buffersize != 0:
+              readins = newsize div buffersize
+          else:
+              readins = newsize div buffersize
 
-        # Temporary save the return value and then
-        # pass the pointer to our block variable
-        `block` = cast[cstring](malloc(sizeof(cstring) * buffersize))
-
-        blocksize = buffersize div k
+          `block` = cast[cstringArray](malloc(sizeof(cstring) * buffersize))
+          blocksize = buffersize div k
 
       else:
-        readins = 1
-        buffersize = size
+          readins = 1
+          buffersize = size
+          `block` = cast[cstringArray](malloc(sizeof(cstring) * newsize))
 
-        `block` = cast[cstring](malloc(sizeof(cstring) * newsize))
-
-      #cs1 = cast[cstring](malloc(sizeof(char) * strlen(argv[1])))
       s1 = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + 20)))
-
-      #s1 = cast[cstring](cast[cstring](malloc(sizeof(char) * (strlen(argv[1]) + 20))))
       s2 = cast[cstring](strrchr(argv[1], '/'))
 
       if s2.addr != nil:
@@ -485,112 +508,114 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       else:
         discard strcpy(addr(s1), addr(argv[1]))
 
-      #echo "S1 ", s1
-      #echo "S2 ", s2
       # ILLegal storage bug
       s2 = strchr(s1, '.')
-
       if s2 != nil:
-        #extension = strdup(cs2)
-        #echo "Segfault in here!"
         extension = strdup(s2)
-        s2 = cast[cstring]("\0")
-        #echo "After segfult "
+        s2 = "\0" #cast[cstring]("\0")
+
       else:
           #echo "Seg fault in th else clause!"
           extension = strdup(empty_char)
 
-      discard sprintf(temp, "%d", k)
-
       ##  Allocate for full file name
       fname = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + strlen(curdir) + 20)))
-
-      md = cast[int32](strlen(temp))
+      discard sprintf(temp, "%d", k)
+      md = strlen(temp)
 
       ##  Allocate data and coding
-      #data = cast[cstringArray](malloc(sizeof(cast[cstring](k * 1000))))
-      #coding = cast[cstringArray](malloc(sizeof(cast[cstring](m * 1000))))
+      data = cast[cstringArray](malloc(sizeof(cast[cstring](k))))
+      coding = cast[cstringArray](malloc(sizeof(cast[cstring](m))))
 
       i = 0
-     # echo "M IS ", m
       while i < m:
-        coding[i] = cast[cstring](malloc(sizeof(cstring) * blocksize))
+          coding[i] = cast[cstring](malloc(sizeof(cstring) * blocksize))
+          if coding[i] == nil:
+            perror("malloc")
+            quit(1)
 
-        if coding[i] == nil:
-          perror("malloc")
-          quit(1)
-
-        inc(i)
+          inc(i)
 
       ##  Create coding matrix or bitmatrix and schedule
       timing_set(addr(t3))
       case tech
 
       of No_Coding:
-        nil
+          nil
       of Reed_Sol_Van:
-        matrix = reed_sol_vandermonde_coding_matrix(k, m, w)
+          matrix = reed_sol_vandermonde_coding_matrix(k, m, w)
       of Reed_Sol_R6_Op:
-        nil
+          nil
+
       of Cauchy_Orig:
-        matrix = cauchy_original_coding_matrix(k, m, w)
-        bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix)
-        schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+          matrix = cauchy_original_coding_matrix(k, m, w)
+          bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix)
+          schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+
       of Cauchy_Good:
-        matrix = cauchy_good_general_coding_matrix(k, m, w)
-        bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix)
-        schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+          matrix = cauchy_good_general_coding_matrix(k, m, w)
+          bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix)
+          schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+
       of Liberation:
-        bitmatrix = liberation_coding_bitmatrix(k, w)
-        schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+          bitmatrix = liberation_coding_bitmatrix(k, w)
+          schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+
       of Blaum_Roth:
-        bitmatrix = blaum_roth_coding_bitmatrix(k, w)
-        schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+          bitmatrix = blaum_roth_coding_bitmatrix(k, w)
+          schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+
       of Liber8tion:
-        bitmatrix = liber8tion_coding_bitmatrix(k)
-        schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+          bitmatrix = liber8tion_coding_bitmatrix(k)
+          schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)
+
       of RDP, EVENODD:
         assert(false)
-
 
       timing_set(addr(start))
       timing_set(addr(t4))
       inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
 
+      echo "DEBUG::: Total Sec ", totalsec
 
       ##  Read in data until finished
       n = 1
       total = 0
-      var ffname: cstring
-      ffname = cast[cstring] (malloc( sizeof(cstring) * (100 + 100 + 400)))
 
       while n <= readins:
           ##  Check if padding is needed, if so, add appropriate
           ##  number of zeros
+
           if total < size and total + buffersize <= size:
-            inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+              echo "BLOCK ",  repr(addr(`block`))
+              echo "BUFFER ", buffersize
+              echo "FP ", repr(fp)
+              inc(total, jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
 
           elif total < size and total + buffersize > size:
-            extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+              echo "Erasure code support "
+              extra = cast[cint](jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
 
-            i = extra
-
-            while i < buffersize:
-              var tmp_char: cstring = "0"
-              (`block`.addr + 1)[] = tmp_char
-              inc(i)
+              i = extra
+              while i < buffersize:
+                  var tmp_char: cstring = "0"
+                  #(`block`.addr + 1)[] = tmp_char
+                  `block`[i]="0"
+                  inc(i)
 
           elif total == size: ##  Set pointers to point to file data
             i = 0
-            while i < buffersize:
-              var tmp_char: cstring = "0"
-              (`block`.addr + i)[] = tmp_char
-              inc(i)
+            while i < 10:
+                var tmp_char: cstring = "0"
+                #(`block`.addr + i)[] = "0"
+                `block`[i]="0"
+                inc(i)
 
           i = 0
           ## Set a pointer to point to the file data
           while i < k:
-            data[i] = cast[cstring](`block`.addr  + (i * blocksize))
+            #data[i] = cast[cstring](`block`.addr  + (i * blocksize))
+            data[i] = `block`[i] # + (i * blocksize)
             inc(i)
 
           timing_set(addr(t3))
@@ -602,9 +627,9 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
              echo "M ", m
              echo "W ", w
              echo "Matrix ", matrix[]
-             #echo "Data ", data[0]
-             #echo "Coding ", coding[0]
-             #echo "Blocksize ", blocksize
+             echo "Data ", data[0]
+             echo "Coding ", coding[0]
+             echo "Blocksize ", blocksize
 
              jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
 
@@ -714,6 +739,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       echo "Formula was:----------- (cast[uint](size) div 1024 div 1024) div cast[uint](tsec)) --------------"
       echo ""
 
+          # From here
       return 0
 
 when isMainModule:
