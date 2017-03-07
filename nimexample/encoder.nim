@@ -185,9 +185,10 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
 
       ##  padding file
       #var `block`: cstring
-      var blockc:seq[string]
-      blockc = @[]
-      var `block` = allocCStringArray(blockc)
+      #var blockc:seq[string]
+      #blockc = @[]
+      #var `block` = allocCStringArray(blockc)
+      var `block`: cstring
 
       var block_tmp_handler: cstring # Shall use to tmprary save the return value and then assign to block
 
@@ -338,8 +339,8 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
                 buffersize = up
               else:
                 buffersize = down
-      else:
-          echo "DEBUG::: Buffer size is ", buffersize
+      #else:
+      #    echo "DEBUG::: Buffer size is ", buffersize
 
       ##  Setting of coding technique and error checking
       if strcmp(argv[4], "no_coding") == 0:
@@ -472,7 +473,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
               while newsize mod (k * w * packetsize * sizeof(clong)) != 0:
                   inc(newsize)
       else:
-          echo "DEBUG::: Packet size is ", packetsize
+          #cho "DEBUG::: Packet size is ", packetsize
 
           if size mod (k * w * sizeof(clong)) != 0:
               while newsize mod (k * w * sizeof(clong)) != 0:
@@ -492,13 +493,13 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           else:
               readins = newsize div buffersize
 
-          `block` = cast[cstringArray](malloc(sizeof(cstring) * buffersize))
+          `block` = cast[cstring](malloc(sizeof(cstring) * buffersize))
           blocksize = buffersize div k
 
       else:
           readins = 1
           buffersize = size
-          `block` = cast[cstringArray](malloc(sizeof(cstring) * newsize))
+          `block` = cast[cstring](malloc(sizeof(cstring) * newsize))
 
       s1 = cast[cstring](malloc(sizeof(cstring) * (strlen(argv[1]) + 20)))
       s2 = cast[cstring](strrchr(argv[1], '/'))
@@ -529,17 +530,25 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
 
       i = 0
       while i < m:
-          coding[i] = cast[cstring](malloc(sizeof(cstring) * blocksize))
-          if coding[i] == nil:
-            perror("malloc")
-            quit(1)
+        coding[i] = cast[cstring](malloc(sizeof(char) * blocksize))
+        #echo "Coding's big ", coding[i]
+        #echo "Coding's Interget ", i
+        if coding[i] == nil:
+          perror("malloc")
+          quit(1)
+        inc(i)
 
-          inc(i)
+      #while i < m:
+          #echo "Mallock ", cast[cstring](malloc(sizeof(cstring) * blocksize))
+      #    coding[i] = cast[cstring](malloc(sizeof(cstring) * blocksize))
+      #    if coding[i] == nil:
+      #      perror("malloc")
+      #      quit(1)
+      #    inc(i)
 
       ##  Create coding matrix or bitmatrix and schedule
       timing_set(addr(t3))
       case tech
-
       of No_Coding:
           nil
       of Reed_Sol_Van:
@@ -576,7 +585,10 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       timing_set(addr(t4))
       inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
 
-      echo "DEBUG::: Total Sec ", totalsec
+      #echo "DEBUG::: Total Sec ", totalsec
+      #echo "CODING ", coding[0]
+      #echo "CODING ", coding[1]
+      #echo "CODING ", coding[2]
 
       ##  Read in data until finished
       n = 1
@@ -605,7 +617,7 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
 
           elif total == size: ##  Set pointers to point to file data
             i = 0
-            while i < 10:
+            while i < buffersize:
                 var tmp_char: cstring = "0"
                 #(`block`.addr + i)[] = "0"
                 `block`[i]="0"
@@ -615,10 +627,12 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           ## Set a pointer to point to the file data
           while i < k:
             #data[i] = cast[cstring](`block`.addr  + (i * blocksize))
-            data[i] = `block`[i] # + (i * blocksize)
+            #data[i] = `block`[i] # + (i * blocksize)
+            data[i] = `block` + (i * blocksize)
             inc(i)
 
           timing_set(addr(t3))
+
           ##  Encode according to coding method
           if(No_Coding == tech):
             nil
@@ -626,10 +640,10 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
              echo "K ", k
              echo "M ", m
              echo "W ", w
-             echo "Matrix ", matrix[]
-             echo "Data ", data[0]
-             echo "Coding ", coding[0]
              echo "Blocksize ", blocksize
+             echo "Matrix ", matrix[]
+
+             quit(0)
 
              jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
 
