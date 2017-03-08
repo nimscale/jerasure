@@ -10,8 +10,17 @@ The Project uses a shared library method to create binding, there were a few opt
 create bindng, one of which include, compiling the required header or c files, the best
 options truely depends on the developer.
 
-### Including shared library in nim.cnf ###
-During compilation the binding requires; so you may need to include
+### Downloading and Building jerasure shared library
+Follow the instruction here.
+https://github.com/tsuraan/Jerasure
+Download, compile and install the library
+when your done installing you will have this;
+```sh
+     "/usr/local/lib/libJerasure.so"
+    # NOTE will include version also
+```
+### Including shared path library in nim.cnf ###
+During compilation the binding requires this libraries; so you may need to include
 them in your nim.conf where every it is.
 ```sh
     --passl: "/usr/local/lib/libJerasure.so"
@@ -23,8 +32,23 @@ But if there is an error demanding those library then just include them in your
 nim.conf.
 
 ### Edit your nim.conf to include  jerasure library search path ###
+When you begin using our binding like;
+```py
+    import jerasure.src.jerasure
+    import jerasure.src.galois
+```
+Nim compiler may complain about the absense of those import files;
+in those instance, then you will need to include this line in your nim.conf
+module search path. 
+
 ```ssh
    $path="/usr/lib/nim"
+```
+
+```sh
+    # NOTE: This search path is different from library search path
+    # Here we want nim to search for it's own module import.
+    # As shown above we want nim to search for shared library.
 ```
 This is were nim will look for when importing our library
 
@@ -42,7 +66,7 @@ The development was made on two platforms
 - Ubuntu 16.04
 
 During development ubuntu failed to automatically load for us the shared library path
-this made our problem complain.
+this made our program complain.
 ```sh
     ./jerasure_01: error while loading shared libraries: libJerasure.so.2: cannot open shared object file: No such file or directory
 ```
@@ -57,6 +81,11 @@ As for debian looks like everything is okay it makes sharedlibrary available by 
 ### Dependencies ###
 ```sh
     sudo apt-get install libjerasure-dev
+    
+    # NOTE This is also is different from manauly compiling jerasure to build
+    # shared library.
+    # This command does not compile jerasure into shared libarary so don't 
+    # depend on it, but install it.
 ```
 
 Optionally the init.sh script can help configure dependencies.
@@ -69,9 +98,13 @@ Optionally the init.sh script can help configure dependencies.
 
 - Installing  nim jerasure binding with init.sh
 ```sh
-# This will move the whole jerasure binding to /usr/lib/nim for global access.
-# by nim scripts that need binding.
-./init install 
+    # This will move the whole jerasure binding to /usr/lib/nim for global access.
+    # by nim scripts that need binding.
+    ./init install 
+    
+    # Recall above that you include $path="/usr/lib/nim" in your nim.conf
+    # module import search path
+    # so when you run ./init install it will install the binding in "/usr/lib/nim"
 ```
 
 - Unistalling or purging jerasure with init.sh
@@ -96,7 +129,13 @@ After you have performed the installation step as shown above.
 ```
 Pass the path were our module was installed to see where the module is installed re run the script with the install command
 ```sh
-    nim c -p:/path/to/our/module jtesting.nim
+    # Try the following
+    nim c jtesting.nim
+    
+    # If the above fails by complaing about missing modules
+    # Then try the following.(Ensure that ./init.sh install installed the modules ini $path="/usr/lib/nim"
+    
+    nim c -p:/usr/lib/nim jtesting.nim
 ```
 - Compile if there are no errors complaining about missing modules. Greate! we good to develop using this binding.
 
@@ -116,6 +155,19 @@ You will see a directory called nimexample. Let's test the binding.
     
     # You can do the same with other examples inside.
 ```
+
+### Testing the encoder.nim and decoder.nim ###
+```sh
+    $ nim c nimexample/encoder.nim
+    $ nim c nimexample/decoder.nim
+    
+    # Watch for sucessful compilation.
+    ./encoder  /path/for/file/to/encoding 3  2 reed_sol_van 8 0 0
+    
+    ./decoder /path/for/file/to/encoding reed_sol_van
+    # NOTE you may need to follow the examples in the C based.
+```
+
 NOTE: When running ./init.sh you will see where our module is installed.
 so you may use that path when compiling as demostrated.
 TODO: Just for kicks we could have made our examples take commandline input like:
