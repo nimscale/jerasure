@@ -585,11 +585,6 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
       timing_set(addr(t4))
       inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
 
-      #echo "DEBUG::: Total Sec ", totalsec
-      #echo "CODING ", coding[0]
-      #echo "CODING ", coding[1]
-      #echo "CODING ", coding[2]
-
       ##  Read in data until finished
       n = 1
       total = 0
@@ -599,37 +594,41 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           ##  number of zeros
 
           if total < size and total + buffersize <= size:
-              echo "BLOCK ",  repr(addr(`block`))
-              echo "BUFFER ", buffersize
-              echo "FP ", repr(fp)
-              inc(total, jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
+              #echo "BLOCK ",  repr(addr(`block`))
+              #echo "BUFFER ", buffersize
+              #echo "FP ", repr(fp)
+              #echo "it's here", `block`
+              inc(total, jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
+              #echo "it's here", `block`
 
           elif total < size and total + buffersize > size:
-              echo "Erasure code support "
-              extra = cast[cint](jfread(addr(`block`), cast[cint](sizeof(char)), buffersize, fp))
+              extra = cast[cint](jfread(`block`, cast[cint](sizeof(char)), buffersize, fp))
 
               i = extra
               while i < buffersize:
-                  var tmp_char: cstring = "0"
                   #(`block`.addr + 1)[] = tmp_char
-                  `block`[i]="0"
+                  `block`[i]='\0'
                   inc(i)
 
           elif total == size: ##  Set pointers to point to file data
             i = 0
             while i < buffersize:
-                var tmp_char: cstring = "0"
                 #(`block`.addr + i)[] = "0"
-                `block`[i]="0"
+                `block`[i]='\0'
                 inc(i)
 
           i = 0
           ## Set a pointer to point to the file data
           while i < k:
             #data[i] = cast[cstring](`block`.addr  + (i * blocksize))
+            #data[i] = cast[cstring](`block`.addr  + (i * blocksize))
             #data[i] = `block`[i] # + (i * blocksize)
-            data[i] = `block` + (i * blocksize)
+            #data[i] = `block`[i] +(i * blocksize)
+            #echo "DATA ", `block`[i*blocksize]
+            data[i] = `block` #data[i].addr[]
+
             inc(i)
+          #quit(0)
 
           timing_set(addr(t3))
 
@@ -637,13 +636,15 @@ proc main*(argc: cint; file_path: TaintedString, argv: cstringArray): cint =
           if(No_Coding == tech):
             nil
           elif( Reed_Sol_Van == tech):
-             echo "K ", k
-             echo "M ", m
-             echo "W ", w
-             echo "Blocksize ", blocksize
-             echo "Matrix ", matrix[]
+             #echo "K ", k
+             #echo "M ", m
+             #echo "W ", w
+             #echo "Blocksize ", blocksize
+             #echo "Matrix ", matrix[]
+             #echo "DATA ", data[0]
+             #echo "CODING ", coding[0]
 
-             quit(0)
+             #quit(0)
 
              jerasure_matrix_encode(k, m, w, matrix, data, coding, blocksize)
 
@@ -790,4 +791,4 @@ when isMainModule:
             discard main(cast[cint](args.len()), args[1], source)
       else:
           echo "usage: inputfile"
-          echo "eg  ./encode  /home/s8software/index.html 3  2 reed_sol_van 8 0 0"
+          echo "eg  ./encoder  /home/s8software/index.html 3  2 reed_sol_van 8 0 0"

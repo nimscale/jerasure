@@ -207,16 +207,13 @@ proc main*(argc: cint; argv: cstringArray): cint =
     #echo "BEFORE MALLOCK ", fname
     #fname = cast[cstring](malloc(sizeof(cast[cstring]((10000 + strlen(argv[1]) + 400)))))
     fname = cast[cstring] (malloc( sizeof(cstring) * (100 + strlen(argv[1]) + 400)))
-    echo "FNAME IS ", fname
-    #echo "AFTER MALLOCK BEFORE SPTINTF ", fname
     ##  Read in parameters from metadata file
-    tmp_sprintf =  sprintf(fname, "%s/Coding%s_meta.txt\n", curdir, cs1)
 
-    echo "AFTER MALLOCK ", fname
+    discard sprintf(fname, "%s/Coding%s_meta.txt", curdir, cs1)
+
     #echo tmp_sprintf
     fp = fopen(fname, "rb")
     #echo "If we reach here then all if fine"
-   # echo " "
 
     if fp == nil:
       write(stderr, "Error: no metadata file ", fname)
@@ -247,6 +244,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       write(stderr, "Metadata file - bad format\n")
       quit(0)
 
+    #`method` = tech
     `method` = cast[Coding_Technique](tech) # Original failed code `method` = tech
 
     if fscanf(fp, "%d", addr(readins)) != 1:
@@ -339,7 +337,9 @@ proc main*(argc: cint; argv: cstringArray): cint =
             assert(buffersize div k ==
                 fread(data[i - 1], sizeof((char)), buffersize div k, fp))
           discard fclose(fp)
+
         inc(i)
+
       i = 1
       while i <= m:
         discard sprintf(fname, "%s/Coding/%s_m%0*d%s", curdir, cs1, md, i, extension)
@@ -383,8 +383,10 @@ proc main*(argc: cint; argv: cstringArray): cint =
       ##  Choose proper decoding method
       if cast[Coding_Technique](tech) == Reed_Sol_Van or cast[Coding_Technique](tech) == Reed_Sol_R6_Op:
         i = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data, coding, blocksize)
+
       elif cast[Coding_Technique](tech) == Cauchy_Orig or cast[Coding_Technique](tech) == Cauchy_Good or cast[Coding_Technique](tech) == Liberation or
           cast[Coding_Technique](tech) == Blaum_Roth or cast[Coding_Technique](tech) == Liber8tion:
+
         i = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data, coding,
                                         blocksize, packetsize, 1)
       else:
@@ -396,6 +398,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       if i == - 1:
         write(stderr, "Unsuccessful!\n")
         quit(0)
+
       discard sprintf(fname, "%s/Coding/%s_decoded%s", curdir, cs1, extension)
       if n == 1:
         fp = fopen(fname, "wb")
