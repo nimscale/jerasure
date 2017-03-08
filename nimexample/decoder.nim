@@ -86,8 +86,17 @@ proc main*(argc: cint; argv: cstringArray): cint =
     var fp: ptr FILE ##  File pointer
 
     ##  Jerasure arguments
-    var data: cstringArray
-    var coding: cstringArray
+    #var data: cstringArray
+    #var coding: cstringArray
+
+    var data_nim_array:seq[string]
+    data_nim_array = @[]
+    var data = allocCStringArray(data_nim_array)
+
+    var coding_nim_array:seq[string]
+    coding_nim_array = @[]
+    var coding = allocCStringArray(coding_nim_array)
+
     var erasures: ptr cint
     var erased: ptr cint
     var matrix: ptr cint
@@ -364,17 +373,45 @@ proc main*(argc: cint; argv: cstringArray): cint =
             discard fseek(fp, blocksize * (n - 1), SEEK_SET)
             assert(blocksize == fread(coding[i - 1], sizeof((char)), blocksize, fp))
           discard fclose(fp)
+
         inc(i)
+
       ##  Finish allocating data/coding if needed
+      #printf("I is zero\n")
       if n == 1:
         i = 0
+        #printf("N is not equal to i\n")
+        #printf("I %d\n", i)
+        #printf("Numerased %d\n", numerased)
+
         while i < numerased:
           #(erasures[].addr + numerased)[] = k + i - 1
           if (erasures[].addr + 1)[] < k:
             data[(erasures[].addr + i)[]] = cast[cstring](malloc(sizeof(char) * blocksize))
           else:
-            coding[(erasures[].addr + i)[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
+              #printf("I is %d\n", i)
+              #printf("Address %s\n", repr(erasures[].addr))
+
+              #erasures[].addr[] = 10
+              coding[erasures[].addr[]] = cast[cstring](malloc(sizeof(char) * blocksize))
+
+              #coding[(erasures[].addr + i)[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
+              # ORIGINAL coding[erasures[i] - k] = cast[cstring](malloc(sizeof((char) * blocksize)))
+              #coding[erasures[i] - k] = "Joel" #cast[cstring](malloc(sizeof((char) * blocksize)))
+              #(erasures[].addr + i)[] - k
+              #echo coding[erasures[] - k] #= "joel" #= cast[cstring](malloc(sizeof((char) * blocksize)))
+              #coding[(erasures[].addr - k)]
+              #echo i
+              #coding[(erasures[].addr - k)][]=1
+              #echo "ME ", erasures[].addr - k
+              #coding[(erasures[].addr - k)]
+              #echo "M1 ", repr(erasures[].addr)
+              #coding[(erasures[].addr + i)[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
+              #coding[erasures[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
+
+
           inc(i)
+      #echo coding[]
 
       #erasures[numerased] = -1
       (erasures[].addr + numerased)[] = -1
@@ -382,7 +419,19 @@ proc main*(argc: cint; argv: cstringArray): cint =
 
       ##  Choose proper decoding method
       if cast[Coding_Technique](tech) == Reed_Sol_Van or cast[Coding_Technique](tech) == Reed_Sol_R6_Op:
+        printf("We have choosen reed_sol_van!\n")
+        printf("K %d\n", k)
+        printf("M %d\n", m)
+        printf("W %d\n", w)
+        printf("Matrix %d\n", matrix)
+        printf("Erasure %d\n", erasures)
+        printf("Data %d\n", data)
+        printf("Coding %d\n", coding)
+        printf("Block size %d\n", blocksize)
+
         i = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data, coding, blocksize)
+
+        printf("RETURN VALUE IS  %d\n", i)
 
       elif cast[Coding_Technique](tech) == Cauchy_Orig or cast[Coding_Technique](tech) == Cauchy_Good or cast[Coding_Technique](tech) == Liberation or
           cast[Coding_Technique](tech) == Blaum_Roth or cast[Coding_Technique](tech) == Liber8tion:
@@ -392,6 +441,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
       else:
         write(stderr, "Not a valid coding technique.\n")
         quit(0)
+
       timing_set(addr(t4))
 
       ##  Exit if decoding was unsuccessful
@@ -457,4 +507,4 @@ when isMainModule:
           discard main(2, source)
     else:
         echo "usage: inputfile"
-        echo "eg  ./decode  /home/s8software/index.html"
+        echo "eg  ./decoder  /home/s8software/index.html"
