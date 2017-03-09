@@ -82,8 +82,9 @@ type
     statt* = object #{.header: "<sys/stat.h>", importc:"stat".} = object
        st_size*: off_t            ##  total size, in bytes
 
-proc main*(argc: cint; argv: cstringArray): cint =
+proc main*(argc: cint; file_path: TaintedString; argv: cstringArray): cint =
     var fp: ptr FILE ##  File pointer
+    var fileinfo:FileInfo # For nim
 
     ##  Jerasure arguments
     #var data: cstringArray
@@ -156,7 +157,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
     cs2.addr[] = addr(cs2_tmp)
 
     var fname: cstring
-    var md: cint
+    var md: int32
     #var curdir: ptr cstring
     var tmp_curdir:cstring
 
@@ -275,15 +276,19 @@ proc main*(argc: cint; argv: cstringArray): cint =
     data = cast[cstringArray](malloc(sizeof(cast[cstring](k))))
     coding = cast[cstringArray](malloc(sizeof(cast[cstring](m))))
 
+    #echo "BUFFER Size ", buffersize
+    #echo "Original size ", origsize
+
     if buffersize != origsize:
+        echo "Not equal to original"
         i = 0
         while i < k:
-          data[i] = cast[cstring](malloc(sizeof(char) * (buffersize div k)))
-          inc(i)
+            data[i] = cast[cstring](malloc(sizeof(char) * (buffersize div k)))
+            inc(i)
         i = 0
         while i < m:
-          coding[i] = cast[cstring](malloc(sizeof(char) * (buffersize div k)))
-          inc(i)
+            coding[i] = cast[cstring](malloc(sizeof(char) * (buffersize div k)))
+            inc(i)
         blocksize = buffersize div k
 
     discard sprintf(temp, "%d", k)
@@ -314,37 +319,43 @@ proc main*(argc: cint; argv: cstringArray): cint =
     timing_set(addr(t4))
     inc(totalsec, cast[int](timing_delta(addr(t3), addr(t4))))
 
+    echo "Matrix is ", matrix[]
+
+
     ##  Begin decoding process
 
     total = 0
     n = 1
-    while n <= readins:
+    while (n <= readins):
       numerased = 0
+
       ##  Open files, check for erasures, read in data/coding
       i = 1
       while i <= k:
         discard sprintf(fname, "%s/Coding/%s_k%0*d%s", curdir, cs1, md, i, extension)
         fp = fopen(fname, "rb")
         if fp == nil:
-          #(erased[].addr + i)[] = 0 # Original converted failed one erased[i] = 0
-          (erased[].addr + (i - 1))[] = 1
+            echo "We have a alot of nils!"
+            #(erased[].addr + i)[] = 0 # Original converted failed one erased[i] = 0
+            (erased[].addr + (i - 1))[] = 1
 
-          #erasures[numerased] = i - 1
-          (erasures[].addr + numerased)[] = i - 1
-          inc(numerased)
+            #erasures[numerased] = i - 1
+            (erasures[].addr + numerased)[] = i - 1
+            inc(numerased)
 
-          ## printf("%s failed\n", fname);
+            ## printf("%s failed\n", fname);
         else:
-          if buffersize == origsize:
-            discard stat(fname, addr(status))
-            blocksize = cast[cint](status.st_size)
+          if (buffersize == origsize):
+              fileinfo =  getFileInfo(file_path, true)
+              blocksize = cast[int32](fileinfo.size)
 
-            data[i - 1] = cast[cstring](malloc(sizeof(char) * blocksize))
-            assert(blocksize == fread(data[i - 1], sizeof((char)), blocksize, fp))
+              data[i - 1] = cast[cstring](malloc(sizeof(char) * blocksize))
+
+              discard fread(data[i - 1], sizeof(char), blocksize, fp)
+              #assert(blocksize == fread(data[i - 1], sizeof(char), blocksize, fp))
           else:
             discard fseek(fp, blocksize * (n - 1), SEEK_SET)
-            assert(buffersize div k ==
-                fread(data[i - 1], sizeof((char)), buffersize div k, fp))
+            assert(buffersize div k == fread(data[i - 1], sizeof(char), buffersize div k, fp))
           discard fclose(fp)
 
         inc(i)
@@ -365,13 +376,17 @@ proc main*(argc: cint; argv: cstringArray): cint =
           ## printf("%s failed\n", fname);
         else:
           if buffersize == origsize:
-            discard stat(fname, addr(status))
-            blocksize = cast[cint](status.st_size)
-            coding[i - 1] = cast[cstring](malloc(sizeof(char) * blocksize))
-            assert(blocksize == fread(coding[i - 1], sizeof((char)), blocksize, fp))
+              fileinfo =  getFileInfo(file_path, true)
+              blocksize = cast[int32](fileinfo.size)
+
+              #discard stat(fname, addr(status))
+              #blocksize = cast[cint](status.st_size)
+              coding[i - 1] = cast[cstring](malloc(sizeof(char) * blocksize))
+              discard fread(coding[i - 1], sizeof((char)), blocksize, fp)
           else:
             discard fseek(fp, blocksize * (n - 1), SEEK_SET)
             assert(blocksize == fread(coding[i - 1], sizeof((char)), blocksize, fp))
+
           discard fclose(fp)
 
         inc(i)
@@ -380,35 +395,12 @@ proc main*(argc: cint; argv: cstringArray): cint =
       #printf("I is zero\n")
       if n == 1:
         i = 0
-        #printf("N is not equal to i\n")
-        #printf("I %d\n", i)
-        #printf("Numerased %d\n", numerased)
-
         while i < numerased:
           #(erasures[].addr + numerased)[] = k + i - 1
           if (erasures[].addr + 1)[] < k:
             data[(erasures[].addr + i)[]] = cast[cstring](malloc(sizeof(char) * blocksize))
           else:
-              #printf("I is %d\n", i)
-              #printf("Address %s\n", repr(erasures[].addr))
-
-              #erasures[].addr[] = 10
               coding[erasures[].addr[]] = cast[cstring](malloc(sizeof(char) * blocksize))
-
-              #coding[(erasures[].addr + i)[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
-              # ORIGINAL coding[erasures[i] - k] = cast[cstring](malloc(sizeof((char) * blocksize)))
-              #coding[erasures[i] - k] = "Joel" #cast[cstring](malloc(sizeof((char) * blocksize)))
-              #(erasures[].addr + i)[] - k
-              #echo coding[erasures[] - k] #= "joel" #= cast[cstring](malloc(sizeof((char) * blocksize)))
-              #coding[(erasures[].addr - k)]
-              #echo i
-              #coding[(erasures[].addr - k)][]=1
-              #echo "ME ", erasures[].addr - k
-              #coding[(erasures[].addr - k)]
-              #echo "M1 ", repr(erasures[].addr)
-              #coding[(erasures[].addr + i)[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
-              #coding[erasures[] - k] = cast[cstring](malloc(sizeof(char) * blocksize))
-
 
           inc(i)
       #echo coding[]
@@ -429,7 +421,7 @@ proc main*(argc: cint; argv: cstringArray): cint =
         printf("Coding %d\n", coding)
         printf("Block size %d\n", blocksize)
 
-        i = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data, coding, blocksize)
+        i = jerasure_matrix_decode(k, m, w, matrix, cast[cint](1), erasures, addr(data), addr(coding), blocksize)
 
         printf("RETURN VALUE IS  %d\n", i)
 
@@ -504,7 +496,8 @@ when isMainModule:
           if source[1] == nil:
               source[1] = source[0]
 
-          discard main(2, source)
+          #echo args[0]
+          discard main(2, args[0], source)
     else:
         echo "usage: inputfile"
         echo "eg  ./decoder  /home/s8software/index.html"

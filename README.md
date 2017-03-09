@@ -164,7 +164,7 @@ You will see a directory called nimexample. Let's test the binding.
     # Watch for sucessful compilation.
     ./encoder  /path/for/file/to/encoding 3  2 reed_sol_van 8 0 0
     
-    ./decoder /path/for/file/to/encoding reed_sol_van
+    ./decoder /path/for/file/to/encoding
     # NOTE you may need to follow the examples in the C based.
 ```
 
