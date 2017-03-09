@@ -152,9 +152,10 @@ Pass the path were our module was installed to see where the module is installed
     nim c jtesting.nim
     
     # If the above fails by complaing about missing modules
-    # Then try the following.(Ensure that ./init.sh install installed the modules ini $path="/usr/lib/nim"
+    # Then try the following.(Ensure that ./init.sh install installed the 
+    # the module in "/usr/lib/nim" or in  "/usr/local"
     
-    nim c -p:/usr/lib/nim jtesting.nim
+    nim c -p:/path/where/module/is/installed jtesting.nim
 ```
 - Compile if there are no errors complaining about missing modules. Greate! we good to develop using this binding.
 
