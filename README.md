@@ -21,7 +21,7 @@ when your done installing you will have this;
 ```
 ### Including shared path library in nim.cfg ###
 During compilation the binding requires this libraries; so you may need to include
-them in your nim.conf where every it is.
+them in your nim.cfg where every it is.
 ```sh
     --passl: "/usr/local/lib/libJerasure.so"
     --passl: "/usr/local/lib/libgf_complete.so"
