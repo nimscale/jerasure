@@ -19,7 +19,7 @@ when your done installing you will have this;
      "/usr/local/lib/libJerasure.so"
     # NOTE will include version also
 ```
-### Including shared path library in nim.cnf ###
+### Including shared path library in nim.cfg ###
 During compilation the binding requires this libraries; so you may need to include
 them in your nim.conf where every it is.
 ```sh
@@ -29,16 +29,16 @@ them in your nim.conf where every it is.
 NOTE: Depending on where nim is installed, at times it will automatically do
 the linking as we have included it already into development binding.
 But if there is an error demanding those library then just include them in your
-nim.conf.
+nim.cfg.
 
-### Edit your nim.conf to include  jerasure library search path ###
+### Edit your nim.cfg to include  jerasure library search path ###
 When you begin using our binding like;
 ```py
     import jerasure.src.jerasure
     import jerasure.src.galois
 ```
 Nim compiler may complain about the absense of those import files;
-in those instance, then you will need to include this line in your nim.conf
+in those instance, then you will need to include this line in your nim.cfg
 module search path. 
 
 ```ssh
@@ -102,7 +102,7 @@ Optionally the init.sh script can help configure dependencies.
     # by nim scripts that need binding.
     ./init install 
     
-    # Recall above that you include $path="/usr/lib/nim" in your nim.conf
+    # Recall above that you include $path="/usr/lib/nim" in your nim.cfg
     # module import search path
     # so when you run ./init install it will install the binding in "/usr/lib/nim"
 ```
@@ -166,6 +166,8 @@ You will see a directory called nimexample. Let's test the binding.
     
     ./decoder /path/for/file/to/encoding
     # NOTE you may need to follow the examples in the C based.
+    
+    # A directory call Coding will be created
 ```
 
 NOTE: When running ./init.sh you will see where our module is installed.
