@@ -93,14 +93,14 @@ Optionally the init.sh script can help configure dependencies.
 #### Using the init.sh script to configure and test jerasure binding. ####
 - Checking and installing dependencies required ( not nim )
 ```sh
-./init depends
+./init.sh depends
 ```
 
 - Installing  nim jerasure binding with init.sh
 ```sh
     # This will move the whole jerasure binding to /usr/lib/nim for global access.
     # by nim scripts that need binding.
-    ./init install 
+    ./init.sh install 
     
     # Recall above that you include $path="/usr/lib/nim" in your nim.cfg
     # module import search path
@@ -110,7 +110,7 @@ Optionally the init.sh script can help configure dependencies.
 - Unistalling or purging jerasure with init.sh
 ```sh
     # This will do the opposite of the install command, rm -rf /usr/lib/nim/jerasure
-    ./init purge
+    ./init.sh purge
 ```
 
 ### How to use Jerasure nim binding in you project ###
