@@ -98,13 +98,32 @@ Optionally the init.sh script can help configure dependencies.
 
 - Installing  nim jerasure binding with init.sh
 ```sh
-    # This will move the whole jerasure binding to /usr/lib/nim for global access.
+    # This will move the whole jerasure binding to "/usr/lib/nim"  or to "/usr/local" for global access.
     # by nim scripts that need binding.
     ./init.sh install 
     
-    # Recall above that you include $path="/usr/lib/nim" in your nim.cfg
+    # NOTE /usr/lib/nim  and /usr/local
+    # Script will install binding in /usr/lib/nim if that path already exists
+    # if the path does not exists it will fall back to /usr/local
+    
+    # Recall above that you included $path="/usr/lib/nim" in your nim.cfg
     # module import search path
-    # so when you run ./init install it will install the binding in "/usr/lib/nim"
+    # so when you run ./init install it will install the binding in "/usr/lib/nim" or in /usr/local.
+    # So if the bindings are installed in $path="/usr/local" then edit your
+    # nim.cfg and include $path="/usr/local"
+    
+    # Pay attention where the $./init.sh install installs the binding
+    $/usr/lib/nim # If the path exists; else
+    $/usr/local # as the fallback.
+    
+```
+### Checking where the module are installed
+If you want to know where the ./init.sh installed the binding
+do this
+```sh
+    $ ./init.sh install 
+    # It will check where the module is and return the path
+    # get that path and include in your nim.cfg
 ```
 
 - Unistalling or purging jerasure with init.sh
