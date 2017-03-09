@@ -421,9 +421,7 @@ proc main*(argc: cint; file_path: TaintedString; argv: cstringArray): cint =
         printf("Coding %d\n", coding)
         printf("Block size %d\n", blocksize)
 
-        i = jerasure_matrix_decode(k, m, w, matrix, cast[cint](1), erasures, addr(data), addr(coding), blocksize)
-
-        printf("RETURN VALUE IS  %d\n", i)
+        i = jerasure_matrix_decode(k, m, w, matrix, cast[cint](1), erasures, data, coding, blocksize)
 
       elif cast[Coding_Technique](tech) == Cauchy_Orig or cast[Coding_Technique](tech) == Cauchy_Good or cast[Coding_Technique](tech) == Liberation or
           cast[Coding_Technique](tech) == Blaum_Roth or cast[Coding_Technique](tech) == Liber8tion:
