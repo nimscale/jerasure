@@ -1,12 +1,12 @@
-import jerasure.src.jerasure
-import jerasure.src.galois
-import jerasure.src.cauchy
-import jerasure.src.liberation
-import jerasure.src.reed_sol
-import jerasure.src.sharedlib # Not part of the standard binding
-import jerasure.src.templates # Not part of the standard binding
-import jerasure.src.gf_typedef # Not part of the standard binding
-import jerasure.src.timing
+import jerasure
+import galois
+import cauchy
+import liberation
+import reed_sol
+import sharedlib # Not part of the standard binding
+import templates # Not part of the standard binding
+import gf_typedef # Not part of the standard binding
+import timing
 
 template talloc*(`type`, num: untyped): untyped =
   cast[ptr `type`](alloc(sizeof(`type`) * (num)))

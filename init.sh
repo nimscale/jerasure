@@ -143,7 +143,9 @@ then
                 
             else
                 # Run the command 
+                echo "Looks like you have jerasure binding already installed $NIM_LIB_DIR"
                 $CMD
+                
             fi
             
         else
@@ -152,17 +154,19 @@ then
     
     # In case directory does not exist for nim!
     else
-        echo "Directory $NIM_LIB_DIR not found Will install in $BASE_LIB_DIR"
+        echo "Directory $NIM_LIB_DIR not found... creating"
+        CREATE_NIM_DIR="mkdir -p $NIM_LIB_DIR"
+        
         echo ""
         sleep 2 # A little nap won't hurt
-        
+                
         if [ $EUID -eq 0 ]
         then
                                     
             if [[ $WORKING_DIR == *"-master"* ]]
             then
                 # Just create the jerasure folder in
-                JDIR="$BASE_LIB_DIR/jerasure"
+                JDIR="$CREATE_NIM_DIR/jerasure"
                 
                 create_dir="mkdir -p $JDIR"
                 
@@ -189,15 +193,13 @@ then
                 
             else
                 # Run the command 
-                JDIR="$BASE_LIB_DIR/jerasure"
+                $CREATE_NIM_DIR
                 
-                create_dir="mkdir -p $JDIR"
-                
-                if [ -d $JDIR ]
+                if [ -d $NIM_LIB_DIR ]
                 then
                     echo "You have already installed just compile with!"
                     echo 
-                    echo "nim c -p:$BASE_LIB_DIR nimexample/jerasure_01.nim"
+                    echo "nim c -p:$NIM_LIB_DIR nimexample/jerasure_01.nim"
                     echo 
                     
                 else
